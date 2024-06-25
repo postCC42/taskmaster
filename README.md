@@ -3,3 +3,6 @@ Taskmaster is a lightweight job control daemon inspired by supervisor, designed 
 
 ## DOC
 - [overview](Doc/overview.md)
+
+## Whiteboard
+- [taskmaster - Whimsical](https://whimsical.com/task-master-29cbvwuy74kdfhD9hngdUt)
