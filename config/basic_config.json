@@ -1,0 +1,25 @@
+{
+    "programs": {
+        "web_server": {
+            "command": "/usr/bin/python3 -m http.server",
+            "instances": 1,
+            "auto_start": true,
+            "auto_restart": "unexpected",
+            "start_time": 1,
+            "stop_time": 5,
+            "restart_attempts": 3,
+            "stop_signal": "SIGTERM",
+            "expected_exit_codes": [0],
+            "working_directory": "/tmp/",
+            "umask": "None",
+            "stdout_log": "top_output.log",
+            "stderr_log": "top_error.log",
+            "environment_variables": [
+                "STARTED_BY=TASKMASTER",
+                "MONITORING=true"
+            ]
+        }
+    },
+    "logging_enabled": true,
+    "log_file": "taskmaster.log"
+}
