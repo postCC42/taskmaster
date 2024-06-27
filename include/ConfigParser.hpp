@@ -2,18 +2,20 @@
 # define CONFIGPARSER_HPP
 
 #include <fstream>
+#include <stdexcept>
+#include <iostream>
 #include <nlohmann/json.hpp>
-#include <string>
+
 using json = nlohmann::json;
 
 class ConfigParser {
 
     public:
         explicit ConfigParser(const std::string& configFilePath);
-        nlohmann::json getConfig() const;
+        json getConfig() const;
 
     private:
-        nlohmann::json config;
+        json config;
         void parseConfig(const std::string& configFilePath);
 };
 
