@@ -1,6 +1,4 @@
 #include "ConfigParser.hpp"
-#include <fstream>
-#include <stdexcept>
 
 ConfigParser::ConfigParser(const std::string &configFilePath) {
     parseConfig(configFilePath);
@@ -14,6 +12,6 @@ void ConfigParser::parseConfig(const std::string& configFilePath) {
     configFile >> config;
 }
 
-nlohmann::json ConfigParser::getConfig() const {
+json ConfigParser::getConfig() const {
     return config;
 }

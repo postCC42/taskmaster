@@ -1,7 +1,4 @@
 #include "ConfigParser.hpp"
-#include <iostream>
-// #include <cstdlib>
-
 
 int main(const int argc, char *argv[]) {
     (void)argc;
@@ -11,7 +8,7 @@ int main(const int argc, char *argv[]) {
 
     try {
         ConfigParser parser(configFilePath);
-        nlohmann::json config = parser.getConfig();
+        json config = parser.getConfig();
 
         std::cout << "===== Parsed Configuration Recap =====" << std::endl;
 
