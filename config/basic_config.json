@@ -10,7 +10,7 @@
             "restart_attempts": 3,
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [0],
-            "working_directory": "../script/",
+            "working_directory": "/tmp",
             "umask": "None",
             "stdout_log": "top_output.log",
             "stderr_log": "top_error.log",
