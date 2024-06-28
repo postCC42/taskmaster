@@ -43,7 +43,7 @@ class ProcessControl {
         std::string stopSignal;
         std::vector<int> expectedExitCodes; // dynamic allocation, order doesn't matter
         std::string workingDirectory;
-        std::string umaskStr;
+        int umaskInt;
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values

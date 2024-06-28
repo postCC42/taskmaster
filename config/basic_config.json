@@ -11,9 +11,9 @@
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [0],
             "working_directory": "./script/",
-            "umask": "None",
-            "stdout_log": "top_output.log",
-            "stderr_log": "top_error.log",
+            "umask": -1,
+            "stdout_log": "/tmp/web_server_output.log",
+            "stderr_log": "/tmp/web_server_error.log",
             "environment_variables": [
                 "GREETING=Hello evaluator, good luck!",
                 "AUTHORS=Clem and Mathia"

@@ -17,7 +17,7 @@ void ProcessControl::parseConfig(const json& config) {
     stopSignal = config.at("stop_signal").get<std::string>();
     expectedExitCodes = config.at("expected_exit_codes").get<std::vector<int>>();
     workingDirectory = config.at("working_directory").get<std::string>();
-    umaskStr = config.at("umask").get<std::string>();
+    umaskInt = config.at("umask").get<int>();
     stdoutLog = config.at("stdout_log").get<std::string>();
     stderrLog = config.at("stderr_log").get<std::string>();
     for (const auto& envVar : config.at("environment_variables")) {
@@ -46,8 +46,8 @@ void ProcessControl::start() {
             throw std::runtime_error("Failed to change directory to " + workingDirectory);
         }
 
-        if (umaskStr != "None") {
-            ::umask(std::stoi(umaskStr, nullptr, 8));
+         if (umaskInt != -1) {
+            ::umask(umaskInt);
         }
 
         // Redirect stdout and stderr
