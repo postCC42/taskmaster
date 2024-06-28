@@ -51,6 +51,6 @@ class ProcessControl {
 
         void parseConfig(const json& config);
         void setUpEnvironment();
-    };
+};
 
 #endif
