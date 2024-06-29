@@ -1,9 +1,10 @@
 NAME := taskmaster
 SRC_DIR := src
 INCLUDE_DIR := include
+BUILD_DIR := build
 
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-OBJS := $(SRCS:$(SRC_DIR)/%.cpp=build/%.o)
+OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 CXX_DEFS := NAME=\"$(NAME)\"
 
@@ -21,14 +22,14 @@ all: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXX_FLAGS) $(CXX_HEADERS) $(OBJS) $(CXX_LIBS) -o $@
 
-build/%.o: $(SRC_DIR)/%.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) $(CXX_DEPS_FLAGS) $(CXX_DEFS_FLAGS) $(CXX_HEADERS) -c $< -o $@
 
 include $(wildcard $(DEPS))
 
 clean:
-	@rm -rf build
+	@rm -rf $(BUILD_DIR)
 
 fclean: clean
 	@rm -f $(NAME)
