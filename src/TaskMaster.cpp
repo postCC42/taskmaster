@@ -33,6 +33,9 @@ void TaskMaster::commandLoop() {
     while (true) {
         std::cout << "taskmaster> ";
         std::getline(std::cin, command);
+        if (std::cin.eof()) {
+            break;
+        }
 
         if (command == "exit") break;
         handleCommand(command);
