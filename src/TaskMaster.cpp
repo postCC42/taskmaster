@@ -3,14 +3,17 @@
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
     std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
     displayUsage();
+    initializeProcesses();
     commandLoop();
 }
 
 void TaskMaster::initializeProcesses() {
     json config = configParser.getConfig();
+    std::cout << "initializeProcesses" << std::endl;
 
     for (const auto& item : config.at("programs").items()) {
-        processes[item.key()] = ProcessControl(item.key(), item.value());
+        processes.emplace(item.key(), ProcessControl(item.key(), item.value()));
+        std::cout << "Process " << item.key() << " initialized" << std::endl;
     }
 
     startInitialProcesses();
@@ -41,7 +44,8 @@ void TaskMaster::handleCommand(const std::string &command) {
         displayStatus();
     } else if (command.rfind("start", -1) == 0) {
         if (command.length() > 5) {
-            std::string processName = command.substr(5);
+            // TODO: should be a split on space character
+            const std::string processName = command.substr(6);
             startProcess(processName);
         } else {
             std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
@@ -52,6 +56,7 @@ void TaskMaster::handleCommand(const std::string &command) {
 }
 
 void TaskMaster::startProcess(const std::string& processName) {
+    std::cout << "Trying to start process: '" << processName << "'" << std::endl;
     auto it = processes.find(processName);
     if (it != processes.end()) {
         it->second.start();

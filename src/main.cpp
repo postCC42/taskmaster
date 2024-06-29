@@ -10,7 +10,6 @@ int main(const int argc, char* argv[]) {
 
     try {
         TaskMaster taskmaster(configFilePath);
-        taskmaster.initializeProcesses();
     } catch (const std::exception& ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
         return EXIT_FAILURE;
