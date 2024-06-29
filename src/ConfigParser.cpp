@@ -9,7 +9,10 @@ void ConfigParser::parseConfig(const std::string& configFilePath) {
     if (!configFile.is_open()) {
         throw std::runtime_error("Could not open config file: " + configFilePath);
     }
+
     configFile >> config;
+
+    // TODO: create a check config function
 }
 
 json ConfigParser::getConfig() const {

@@ -43,6 +43,7 @@ void TaskMaster::commandLoop() {
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
+    // TODO: create a CLI class for command handling
     if (command == "status") {
         displayStatus();
     } else if (command.rfind("start", -1) == 0) {
