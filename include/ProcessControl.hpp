@@ -30,7 +30,6 @@ class ProcessControl {
         std::string getName() const;
         int getStartTime() const { return startTime; }
 
-
     private:
         std::string name;
         std::string command;
@@ -47,6 +46,8 @@ class ProcessControl {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
+
+        // TODO: the pid needs to be a collection
         pid_t pid;
 
         void parseConfig(const json& config);
