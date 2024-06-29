@@ -10,13 +10,15 @@ void TaskMaster::initializeProcesses() {
     json config = configParser.getConfig();
 
     for (const auto& item : config.at("programs").items()) {
-        processes.emplace_back(item.key(), item.value());
+        processes[item.key()] = ProcessControl(item.key(), item.value());
     }
 
     startInitialProcesses();
 }
+
 void TaskMaster::startInitialProcesses() {
-    for (auto& process : processes) {
+    for (auto&[name, process] : processes) {
+        // TODO: should be autostart
         if (process.getStartTime() == 1) {
             process.start();
         }
@@ -50,17 +52,16 @@ void TaskMaster::handleCommand(const std::string &command) {
 }
 
 void TaskMaster::startProcess(const std::string& processName) {
-    auto it = std::find_if(processes.begin(), processes.end(),
-        [&processName](ProcessControl& p) { return p.getName() == processName; });
+    auto it = processes.find(processName);
     if (it != processes.end()) {
-        it->start();
+        it->second.start();
     } else {
         std::cout << "Process not found" << std::endl;
     }
 }
 
 void TaskMaster::displayStatus() {
-    for (const auto& process : processes) {
+    for (const auto& [name, process] : processes) {
         std::cout << process.getName() << ": " << process.getStatus() << std::endl;
     }
 }

@@ -14,8 +14,8 @@ class TaskMaster {
 
 	private:
 		std::string configFilePath;
-		std::vector<ProcessControl> processes;
 		ConfigParser configParser;
+		std::map<std::string, ProcessControl> processes;
 
 		void commandLoop();
 		void startInitialProcesses();
