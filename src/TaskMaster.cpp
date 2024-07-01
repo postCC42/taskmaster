@@ -113,11 +113,11 @@ void TaskMaster::displayUsage() {
     std::cout << std::endl;
     std::cout << "Commands already implemented:" << std::endl;
     std::cout << "start <program_name>: Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)" << std::endl;
+    std::cout << "stop <program_name>: Stop a running program by name." << std::endl;
     std::cout << "status: Show the status of all programs." << std::endl;
     std::cout << "exit: Exit the taskmaster." << std::endl;
     std::cout << std::endl;
     std::cout << "Commands to be implemented:" << std::endl;
-    std::cout << "stop <program_name>: Stop a running program by name." << std::endl;
     std::cout << "restart <program_name>: Restart a program by name." << std::endl;
     std::cout << "reload <program_name>: Reload the configuration of a program without stopping it." << std::endl;
     std::cout << std::endl;
