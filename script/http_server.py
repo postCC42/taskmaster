@@ -12,7 +12,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
         self.wfile.write(message.encode("utf-8"))
 
 if __name__ == "__main__":
-    port = 8000
+    port = 8704
     server_address = ('', port)
     httpd = HTTPServer(server_address, CustomHandler)
     print(f"Starting server on port {port}...")

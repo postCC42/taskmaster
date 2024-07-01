@@ -4,8 +4,10 @@
 #include <string>
 #include <iostream>
 #include <vector>
-#include "ProcessControl.hpp"
+#include "Command.hpp"
 #include "ConfigParser.hpp"
+#include "Process.hpp"
+#include "Utils.hpp"
 
 class TaskMaster {
 	public:
@@ -16,7 +18,11 @@ class TaskMaster {
 	private:
 		std::string configFilePath;
 		ConfigParser configParser;
-		std::map<std::string, ProcessControl> processes;
+		std::map<std::string, Process> processes;
+
+		const std::string statusCmd = "status";
+    	const std::string startCmd = "start";
+    	const std::string stopCmd = "stop";
 
 		void commandLoop();
 		void startInitialProcesses();
@@ -24,5 +30,8 @@ class TaskMaster {
 		void displayStatus();
 		void displayUsage();
 		void startProcess(const std::string& processName);
+		void stopProcess(const std::string& processName);
+		Process* findProcess(const std::string& processName);
 };
+
 #endif

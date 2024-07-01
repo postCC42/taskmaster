@@ -1,12 +1,11 @@
-#include "ProcessControl.hpp"
+#include "Process.hpp"
 
-
-ProcessControl::ProcessControl(const std::string& name, const json& config)
+Process::Process(const std::string& name, const json& config)
     : name(name), pid(-1) {
     parseConfig(config);
 }
 
-void ProcessControl::parseConfig(const json& config) {
+void Process::parseConfig(const json& config) {
     command = config.at("command").get<std::string>();
     instances = config.at("instances").get<int>();
     autoStart = config.at("auto_start").get<bool>();
@@ -14,7 +13,13 @@ void ProcessControl::parseConfig(const json& config) {
     startTime = config.at("start_time").get<int>();
     stopTime = config.at("stop_time").get<int>();
     restartAttempts = config.at("restart_attempts").get<int>();
-    stopSignal = config.at("stop_signal").get<std::string>();
+
+    std::string stopSignalStr = config.at("stop_signal").get<std::string>();
+    if (signalMap.find(stopSignalStr) == signalMap.end()) {
+        throw std::runtime_error("Invalid stop signal: " + stopSignalStr);
+    }
+    stopSignal = signalMap.at(stopSignalStr);
+
     expectedExitCodes = config.at("expected_exit_codes").get<std::vector<int>>();
     workingDirectory = config.at("working_directory").get<std::string>();
     umaskInt = config.at("umask").get<int>();
@@ -29,15 +34,17 @@ void ProcessControl::parseConfig(const json& config) {
     }
 }
 
-void ProcessControl::setUpEnvironment() {
+void Process::setUpEnvironment() {
     for (const auto& [key, value] : environmentVariables) {
         setenv(key.c_str(), value.c_str(), 1);
     }
 }
 
-void ProcessControl::start() {
+void Process::start() {
     setUpEnvironment();
     // we need to ensure that supervised program runs independently => fork create child process
+
+    // TODO: should be a loop for multiple instances
     pid = fork();
     if (pid < 0) {
         throw std::runtime_error("Failed to fork process");
@@ -63,19 +70,33 @@ void ProcessControl::start() {
     }
 }
 
-bool ProcessControl::isRunning() const {
+void Process::stop() {
+    std::cout << "Stopping process " << name << " with PID " << pid << std::endl;
+    if (pid <= 0) {
+        throw std::runtime_error("No valid process ID");
+    }
+
+    if (kill(pid, stopSignal) != 0) {
+        throw std::runtime_error("Failed to stop process");
+    }
+
+    std::cout << "Stopped process " << name << " with PID " << pid << std::endl;
+    pid = -1;
+}
+
+bool Process::isRunning() const {
     if (pid <= 0) {
         return false; // No valid process ID
     }
+
+    std::cout << "Checking process status for PID " << pid << std::endl;
 
     int status;
     pid_t result = waitpid(pid, &status, WNOHANG);
 
     if (result == 0) {
-        // Process with PID is still running
         return true;
     } else if (result == pid) {
-        // Process with PID has terminated
         return false;
     } else if (result == -1) {
         throw std::runtime_error("Error checking process status");
@@ -84,10 +105,14 @@ bool ProcessControl::isRunning() const {
     return false;
 }
 
-std::string ProcessControl::getStatus() const {
-    return isRunning() ? "Running" : "Stopped";
+std::string Process::getStatus() const {
+    if (isRunning()) {
+        return "Running PID " + std::to_string(pid);
+    } else {
+        return "Stopped";
+    }
 }
 
-std::string ProcessControl::getName() const {
+std::string Process::getName() const {
     return name;
 }
