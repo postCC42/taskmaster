@@ -25,5 +25,6 @@ class TaskMaster {
 		void displayUsage();
 		void startProcess(const std::string& processName);
 		void stopProcess(const std::string& processName);
+		ProcessControl* findProcess(const std::string& processName);
 };
 #endif

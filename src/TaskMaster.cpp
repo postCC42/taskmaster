@@ -68,21 +68,27 @@ void TaskMaster::handleCommand(const std::string &command) {
     }
 }
 
-void TaskMaster::startProcess(const std::string& processName) {
+ProcessControl* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);
     if (it != processes.end()) {
-        it->second.start();
+        return &it->second;
     } else {
         std::cout << "Process not found: " << processName << std::endl;
+        return nullptr;
+    }
+}
+
+void TaskMaster::startProcess(const std::string& processName) {
+    ProcessControl* process = findProcess(processName);
+    if (process != nullptr) {
+        process->start();
     }
 }
 
 void TaskMaster::stopProcess(const std::string& processName) {
-    auto it = processes.find(processName);
-    if (it != processes.end()) {
-        it->second.stop();
-    } else {
-        std::cout << "Process not found: " << processName << std::endl;
+    ProcessControl* process = findProcess(processName);
+    if (process != nullptr) {
+        process->stop();
     }
 }
 
