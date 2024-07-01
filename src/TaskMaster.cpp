@@ -44,29 +44,39 @@ void TaskMaster::commandLoop() {
 
 void TaskMaster::handleCommand(const std::string &command) {
     std::cout << "Handling command: " << command << std::endl;
-    // TODO: create a CLI class for command handling
-    if (command == "status") {
-        displayStatus();
-    } else if (command.rfind("start", -1) == 0) {
-        if (command.length() > 6) {
-            // TODO: should be a split on space character
-            const std::string processName = command.substr(6);
-            startProcess(processName);
-        } else {
-            std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
-        }
-    } else if (command.rfind("stop", -1) == 0) {
-        if (command.length() > 5) {
-            // TODO: should be a split on space character
-            const std::string processName = command.substr(5);
-            stopProcess(processName);
-        } else {
-            std::cout << "Invalid command format. Usage: stop <process_name>" << std::endl;
-        }
-    } else {
-        std::cout << "Unknown command: " << command << std::endl;
+
+    std::vector<std::string> words = Utils::split(command, ' ');
+
+    if (words.empty()) {
+        std::cout << "Invalid command." << std::endl;
+        return;
+    }
+
+    Command cmd = stringToCommand(words[0]);
+    switch (cmd) {
+        case Command::Status:
+            displayStatus();
+            break;
+        case Command::Start:
+            if (words.size() > 1) {
+                startProcess(words[1]);
+            } else {
+                std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
+            }
+            break;
+        case Command::Stop:
+            if (words.size() > 1) {
+                stopProcess(words[1]);
+            } else {
+                std::cout << "Invalid command format. Usage: stop <process_name>" << std::endl;
+            }
+            break;
+        default:
+            std::cout << "Unknown command: " << command << std::endl;
+            break;
     }
 }
+
 
 ProcessControl* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);
