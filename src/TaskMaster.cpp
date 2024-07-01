@@ -1,4 +1,4 @@
-#include "../include/TaskMaster.hpp"
+#include "TaskMaster.hpp"
 
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
     std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
@@ -12,7 +12,7 @@ void TaskMaster::initializeProcesses() {
     std::cout << "initializeProcesses" << std::endl;
 
     for (const auto& item : config.at("programs").items()) {
-        processes.emplace(item.key(), ProcessControl(item.key(), item.value()));
+        processes.emplace(item.key(), Process(item.key(), item.value()));
         std::cout << "Process " << item.key() << " initialized" << std::endl;
     }
 
@@ -78,7 +78,7 @@ void TaskMaster::handleCommand(const std::string &command) {
 }
 
 
-ProcessControl* TaskMaster::findProcess(const std::string& processName) {
+Process* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);
     if (it != processes.end()) {
         return &it->second;
@@ -89,14 +89,14 @@ ProcessControl* TaskMaster::findProcess(const std::string& processName) {
 }
 
 void TaskMaster::startProcess(const std::string& processName) {
-    ProcessControl* process = findProcess(processName);
+    Process* process = findProcess(processName);
     if (process != nullptr) {
         process->start();
     }
 }
 
 void TaskMaster::stopProcess(const std::string& processName) {
-    ProcessControl* process = findProcess(processName);
+    Process* process = findProcess(processName);
     if (process != nullptr) {
         process->stop();
     }

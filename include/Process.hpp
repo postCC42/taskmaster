@@ -1,5 +1,5 @@
-#ifndef PROCESSCONTROL_HPP
-# define PROCESSCONTROL_HPP
+#ifndef PROCESS_HPP
+# define PROCESS_HPP
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -19,10 +19,10 @@
 
 using json = nlohmann::json;
 
-class ProcessControl {
+class Process {
 
     public:
-        explicit ProcessControl(const std::string& name, const json& config);
+        explicit Process(const std::string& name, const json& config);
         void start();
         void stop();
         bool isRunning() const;

@@ -1,12 +1,11 @@
-#include "ProcessControl.hpp"
+#include "Process.hpp"
 
-
-ProcessControl::ProcessControl(const std::string& name, const json& config)
+Process::Process(const std::string& name, const json& config)
     : name(name), pid(-1) {
     parseConfig(config);
 }
 
-void ProcessControl::parseConfig(const json& config) {
+void Process::parseConfig(const json& config) {
     command = config.at("command").get<std::string>();
     instances = config.at("instances").get<int>();
     autoStart = config.at("auto_start").get<bool>();
@@ -35,15 +34,17 @@ void ProcessControl::parseConfig(const json& config) {
     }
 }
 
-void ProcessControl::setUpEnvironment() {
+void Process::setUpEnvironment() {
     for (const auto& [key, value] : environmentVariables) {
         setenv(key.c_str(), value.c_str(), 1);
     }
 }
 
-void ProcessControl::start() {
+void Process::start() {
     setUpEnvironment();
     // we need to ensure that supervised program runs independently => fork create child process
+
+    // TODO: should be a loop for multiple instances
     pid = fork();
     if (pid < 0) {
         throw std::runtime_error("Failed to fork process");
@@ -69,7 +70,7 @@ void ProcessControl::start() {
     }
 }
 
-void ProcessControl::stop() {
+void Process::stop() {
     std::cout << "Stopping process " << name << " with PID " << pid << std::endl;
     if (pid <= 0) {
         throw std::runtime_error("No valid process ID");
@@ -83,7 +84,7 @@ void ProcessControl::stop() {
     pid = -1;
 }
 
-bool ProcessControl::isRunning() const {
+bool Process::isRunning() const {
     if (pid <= 0) {
         return false; // No valid process ID
     }
@@ -104,7 +105,7 @@ bool ProcessControl::isRunning() const {
     return false;
 }
 
-std::string ProcessControl::getStatus() const {
+std::string Process::getStatus() const {
     if (isRunning()) {
         return "Running PID " + std::to_string(pid);
     } else {
@@ -112,6 +113,6 @@ std::string ProcessControl::getStatus() const {
     }
 }
 
-std::string ProcessControl::getName() const {
+std::string Process::getName() const {
     return name;
 }
