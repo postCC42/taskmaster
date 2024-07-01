@@ -14,7 +14,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <signal.h>
 #include <algorithm>
 
@@ -25,6 +24,7 @@ class ProcessControl {
     public:
         explicit ProcessControl(const std::string& name, const json& config);
         void start();
+        void stop();
         bool isRunning() const;
         std::string getStatus() const;
         std::string getName() const;
@@ -39,7 +39,7 @@ class ProcessControl {
         int startTime;
         int stopTime;
         int restartAttempts;
-        std::string stopSignal;
+        int stopSignal;
         std::vector<int> expectedExitCodes; // dynamic allocation, order doesn't matter
         std::string workingDirectory;
         int umaskInt;
@@ -52,6 +52,13 @@ class ProcessControl {
 
         void parseConfig(const json& config);
         void setUpEnvironment();
+
+        // TODO: should be static
+        const std::map<std::string, int> signalMap = {
+            {"SIGTERM", SIGTERM},
+            {"SIGINT", SIGINT},
+            // TODO: add more signals
+        };
 };
 
 #endif

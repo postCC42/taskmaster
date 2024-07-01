@@ -43,16 +43,25 @@ void TaskMaster::commandLoop() {
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
+    std::cout << "Handling command: " << command << std::endl;
     // TODO: create a CLI class for command handling
     if (command == "status") {
         displayStatus();
     } else if (command.rfind("start", -1) == 0) {
-        if (command.length() > 5) {
+        if (command.length() > 6) {
             // TODO: should be a split on space character
             const std::string processName = command.substr(6);
             startProcess(processName);
         } else {
             std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
+        }
+    } else if (command.rfind("stop", -1) == 0) {
+        if (command.length() > 5) {
+            // TODO: should be a split on space character
+            const std::string processName = command.substr(5);
+            stopProcess(processName);
+        } else {
+            std::cout << "Invalid command format. Usage: stop <process_name>" << std::endl;
         }
     } else {
         std::cout << "Unknown command: " << command << std::endl;
@@ -60,12 +69,20 @@ void TaskMaster::handleCommand(const std::string &command) {
 }
 
 void TaskMaster::startProcess(const std::string& processName) {
-    std::cout << "Trying to start process: '" << processName << "'" << std::endl;
     auto it = processes.find(processName);
     if (it != processes.end()) {
         it->second.start();
     } else {
-        std::cout << "Process not found" << std::endl;
+        std::cout << "Process not found: " << processName << std::endl;
+    }
+}
+
+void TaskMaster::stopProcess(const std::string& processName) {
+    auto it = processes.find(processName);
+    if (it != processes.end()) {
+        it->second.stop();
+    } else {
+        std::cout << "Process not found: " << processName << std::endl;
     }
 }
 

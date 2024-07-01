@@ -24,5 +24,6 @@ class TaskMaster {
 		void displayStatus();
 		void displayUsage();
 		void startProcess(const std::string& processName);
+		void stopProcess(const std::string& processName);
 };
 #endif
