@@ -41,45 +41,6 @@ void Process::setUpEnvironment() {
     }
 }
 
-// void Process::start() {
-//     setUpEnvironment();
-//     // we need to ensure that supervised program runs independently => fork create child process
-
-//     // TODO: should be a loop for multiple instances
-//     pid = fork();
-//     if (pid < 0) {
-//         throw std::runtime_error("Failed to fork process");
-//     } else if (pid == 0) {
-//         if (chdir(workingDirectory.c_str()) != 0) {
-//             throw std::runtime_error("Failed to change directory to " + workingDirectory);
-//         }
-
-//          if (umaskInt != -1) {
-//             ::umask(umaskInt);
-//         }
-
-//         // Redirect stdout and stderr
-//         int stdoutFd = open(stdoutLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-//         int stderrFd = open(stderrLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-//         dup2(stdoutFd, STDOUT_FILENO);
-//         dup2(stderrFd, STDERR_FILENO);
-
-//         std::vector<std::string> args = Utils::split(command, ' ');
-//         const char* argv[args.size() + 1];
-//         for (size_t i = 0; i < args.size(); ++i) {
-//             argv[i] = args[i].c_str();
-//         }
-//         argv[args.size()] = nullptr;
-
-//         execvp(argv[0], const_cast<char* const*>(argv));
-
-//         _exit(EXIT_FAILURE);
-//     } else {
-//         std::cout << "Started process " << name << " with PID " << pid << std::endl;
-//     }
-// }
-
-
 void Process::start() {
     // todo remove check n. instances when added check conf file func
     if (instances < 1) {
@@ -87,125 +48,162 @@ void Process::start() {
     }
     setUpEnvironment();
     child_pids.clear(); 
-
-    for (int i = 1; i <= instances; ++i) {
-        pid_t child_pid = fork();
-        if (child_pid < 0) {
-            std::cerr << "Failed to fork process for instance " << i << std::endl;
-            for (pid_t pid : child_pids) {
-                kill(pid, SIGKILL);
-            }
-            std::cerr << "Exiting due to fork failure." << std::endl;
-            exit(EXIT_FAILURE);
-        } else if (child_pid == 0) {
-            // Child process
-            if (chdir(workingDirectory.c_str()) != 0) {
-                perror("Failed to change directory");
-                _exit(EXIT_FAILURE);
-            }
-
-            if (umaskInt != -1) {
-                ::umask(umaskInt);
-            }
-
-            // Redirect stdout and stderr
-            int stdoutFd = open(stdoutLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-            int stderrFd = open(stderrLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (stdoutFd < 0 || stderrFd < 0 || dup2(stdoutFd, STDOUT_FILENO) < 0 || dup2(stderrFd, STDERR_FILENO) < 0) {
-                perror("Failed to redirect stdout/stderr");
-                _exit(EXIT_FAILURE);
-            }
-
-            std::vector<std::string> args = Utils::split(command, ' ');
-            std::vector<char*> argv(args.size() + 1);
-            for (size_t j = 0; j < args.size(); ++j) {
-                argv[j] = const_cast<char*>(args[j].c_str());
-            }
-            argv[args.size()] = nullptr;
-
-            if (execvp(argv[0], argv.data()) == -1) {
-                perror("execvp");
-                _exit(EXIT_FAILURE);
-            }
-        } else {
-            // Parent process
-            child_pids.push_back(child_pid);
-            std::cout << "Started process " << name << " instance " << i << " with PID " << child_pid << std::endl;
-        }
-    }
-
+    startChildProcesses();
     monitorChildProcesses();
 }
 
+void Process::startChildProcesses() {
+    for (int i = 1; i <= instances; ++i) {
+        pid_t child_pid = fork();
+        if (child_pid < 0) {
+            handleForkFailure(i);
+        } else if (child_pid == 0) {
+            runChildProcess();
+        } else {
+            handleParentProcess(child_pid, i);
+        }
+    }
+}
+
+void Process::handleForkFailure(int instanceNumber) {
+    std::cerr << "Failed to fork process for instance " << instanceNumber << std::endl;
+    for (pid_t pid : child_pids) {
+        kill(pid, SIGKILL);
+    }
+    std::cerr << "Exiting due to fork failure." << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+void Process::runChildProcess() {
+    if (chdir(workingDirectory.c_str()) != 0) {
+        perror("Failed to change directory");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (umaskInt != -1) {
+        ::umask(umaskInt);
+    }
+
+    // Redirect stdout and stderr
+    int stdoutFd = open(stdoutLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+    int stderrFd = open(stderrLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (stdoutFd < 0 || stderrFd < 0 || dup2(stdoutFd, STDOUT_FILENO) < 0 || dup2(stderrFd, STDERR_FILENO) < 0) {
+        perror("Failed to redirect stdout/stderr");
+        _exit(EXIT_FAILURE);
+    }
+
+    std::vector<std::string> args = Utils::split(command, ' ');
+    std::vector<char*> argv(args.size() + 1);
+    for (size_t j = 0; j < args.size(); ++j) {
+        argv[j] = const_cast<char*>(args[j].c_str());
+    }
+    argv[args.size()] = nullptr;
+
+    if (execvp(argv[0], argv.data()) == -1) {
+        perror("execvp");
+        _exit(EXIT_FAILURE);
+    }
+}
+
+void Process::handleParentProcess(pid_t child_pid, int instanceNumber) {
+    child_pids.push_back(child_pid);
+    std::cout << "Started process " << name << " instance " << instanceNumber << " with PID " << child_pid << std::endl;
+}
+
 void Process::monitorChildProcesses() {
-    // Parent waits for child processes to terminate
     bool failed_process = false;
-    
+
     while (!child_pids.empty()) {
         int status;
-        pid_t pid = waitpid(-1, &status, WNOHANG);
-        if (pid != 0 && pid != -1) {
-            // stop();
-            // Child process has terminated
+        pid_t pid = waitChildProcess(status);
+        if (pid > 0) {
+            handleChildExit(pid, status, failed_process); // Pass status to handleChildExit
+        } else if (pid == -1) {
+            handleErrorWaitingForChildProcess();
+        } else if (pid == 0) {
+            break;
+        }
+    }
+
+    handleProcessCompletion(failed_process);
+}
+
+pid_t Process::waitChildProcess(int& status) {
+    pid_t pid = waitpid(-1, &status, WNOHANG);
+    return pid;
+}
+
+void Process::handleChildExit(pid_t pid, int status, bool& failed_process) {
+    auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+    if (it != child_pids.end()) {
+        child_pids.erase(it);
+    }
+
+    if (WIFEXITED(status)) {
+        handleNormalChildExit(pid, status, failed_process);
+    } else if (WIFSIGNALED(status)) {
+        handleSignalTermination(pid, status, failed_process);
+    }
+}
+
+void Process::handleNormalChildExit(pid_t pid, int status, bool& failed_process) {
+    std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+    if (WEXITSTATUS(status) != 0) {
+        std::cerr << "Child process " << pid << " failed. Exiting." << std::endl;
+        failed_process = true;
+        terminateAllChildProcesses();
+    }
+}
+
+void Process::handleSignalTermination(pid_t pid, int status, bool& failed_process) {
+    std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
+    std::cerr << "Exiting due to child process termination by signal." << std::endl;
+    failed_process = true;
+    terminateAllChildProcesses();
+}
+
+void Process::terminateAllChildProcesses() {
+    for (pid_t p : child_pids) {
+        kill(p, SIGKILL);
+    }
+}
+
+void Process::handleErrorWaitingForChildProcess() {
+    perror("waitpid");
+    exit(EXIT_FAILURE);
+}
+
+void Process::handleProcessCompletion(bool failed_process) {
+    std::cout << "failed_process = " << failed_process << std::endl;
+    if (failed_process) {
+        cleanUpRemainingChildProcesses();
+        exit(EXIT_FAILURE);
+    } else {
+        std::cout << "All child processes completed successfully." << std::endl;
+    }
+}
+
+void Process::cleanUpRemainingChildProcesses() {
+    while (!child_pids.empty()) {
+        int status;
+        pid_t pid = waitpid(-1, &status, 0);
+        if (pid > 0) {
             auto it = std::find(child_pids.begin(), child_pids.end(), pid);
             if (it != child_pids.end()) {
                 child_pids.erase(it);
             }
             if (WIFEXITED(status)) {
                 std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
-                if (WEXITSTATUS(status) != 0) {
-                    std::cerr << "Child process " << pid << " failed. Exiting." << std::endl;
-                    failed_process = true;
-                    for (pid_t p : child_pids) {
-                        kill(p, SIGKILL);
-                    }
-                    break;
-                }
             } else if (WIFSIGNALED(status)) {
                 std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
-                std::cerr << "Exiting due to child process termination by signal." << std::endl;
-                failed_process = true;
-                for (pid_t p : child_pids) {
-                    kill(p, SIGKILL);
-                }
-                break;
             }
         } else if (pid == -1) {
-            // Error waiting for child process
             perror("waitpid");
             exit(EXIT_FAILURE);
-        } else if (pid == 0) {
-            break;
         }
     }
-
-    std::cout << "failed_process =  " << failed_process << std::endl;
-    if (failed_process) {
-        // Cleanup remaining child processes
-        while (!child_pids.empty()) {
-            int status;
-            pid_t pid = waitpid(-1, &status, 0);
-            if (pid > 0) {
-                auto it = std::find(child_pids.begin(), child_pids.end(), pid);
-                if (it != child_pids.end()) {
-                    child_pids.erase(it);
-                }
-                if (WIFEXITED(status)) {
-                    std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
-                } else if (WIFSIGNALED(status)) {
-                    std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
-                }
-            } else if (pid == -1) {
-                perror("waitpid");
-                exit(EXIT_FAILURE);
-            }
-        }
-        exit(EXIT_FAILURE);
-    }
-
-    std::cout << "All child processes completed successfully." << std::endl;
-    // exit(EXIT_SUCCESS);
 }
+
 
 
 void Process::stop() {

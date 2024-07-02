@@ -1,7 +1,7 @@
 {
     "programs": {
-        "web_server": {
-            "command": "/usr/bin/python3 http_server.py",
+        "system_monitor": {
+            "command": "/usr/bin/top -b",
             "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",
@@ -10,14 +10,11 @@
             "restart_attempts": 3,
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [0],
-            "working_directory": "./script/",
+            "working_directory": "/tmp/",
             "umask": -1,
-            "stdout_log": "/tmp/web_server_output.log",
-            "stderr_log": "/tmp/web_server_error.log",
-            "environment_variables": [
-                "GREETING=Hello evaluator, good luck!",
-                "AUTHORS=Clem and Mathia"
-            ]
+            "stdout_log": "/tmp/system_monitor_output.log",
+            "stderr_log": "/tmp/system_monitor_error.log",
+            "environment_variables": []
         }
     },
     "logging_enabled": true,

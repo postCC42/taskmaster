@@ -24,7 +24,19 @@ class Process {
     public:
         explicit Process(const std::string& name, const json& config);
         void start();
+        void startChildProcesses();
+        void handleForkFailure(int instanceNumber);
+        void runChildProcess();
+        void handleParentProcess(pid_t child_pid, int instanceNumber);
         void monitorChildProcesses();
+        pid_t waitChildProcess(int& status);
+        void handleChildExit(pid_t pid, int status, bool& failed_process); // Updated function declaration
+        void handleNormalChildExit(pid_t pid, int status, bool& failed_process);
+        void handleSignalTermination(pid_t pid, int status, bool& failed_process); 
+        void terminateAllChildProcesses();
+        void handleErrorWaitingForChildProcess();
+        void handleProcessCompletion(bool failed_process);
+        void cleanUpRemainingChildProcesses(); 
         void stop();
         bool isRunning() const;
         std::string getStatus() const;
