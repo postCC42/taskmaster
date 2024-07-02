@@ -1,5 +1,49 @@
+/*
+____ Process Management Class ____
+
+    ____ Overview ____:
+    - Manages child processes based on configuration settings.
+    - Provides methods to start, stop, and monitor processes.
+
+    ____ Constructor ____:
+    - Initializes the process with a name and configuration data.
+
+    ____ Configuration Parsing ____:
+    - Parses a JSON configuration to set up process parameters such as command, instances, environment variables, etc.
+
+    ____ Process Lifecycle ____:
+    - start(): Initiates child processes according to configured instances and manages their lifecycle.
+    - stop(): Terminates all child processes.
+    - isRunning(): Checks if any child processes are currently running.
+    - getStatus(): Retrieves the current status of the process (Running or Stopped).
+
+    ____ Child Process Management ____:
+    - startChildProcesses(): Forks child processes and manages process creation.
+    - monitorChildProcesses(): Monitors child processes for exit and handles exit statuses.
+    - terminateAllChildProcesses(): Stops all child processes forcefully in case of errors or termination signals.
+
+    ____ Error Handling ____:
+    - Provides robust error handling for process creation failures, execution errors, and termination issues.
+
+    ____ Methods ____:
+    - parseConfig(const json& config): Parses JSON configuration data to initialize process parameters.
+    - setUpEnvironment(): Sets up environment variables for child processes based on configured values.
+    - handleForkFailure(int instanceNumber): Handles failures during child process creation.
+    - runChildProcess(): Executes the command for each child process, handles directory changes, and redirects outputs.
+    - handleParentProcess(pid_t child_pid, int instanceNumber): Manages parent process responsibilities after forking.
+
+    ____ Additional Features ____:
+    - Supports configuration validation for critical parameters like number of instances and stop signals.
+    - Implements robust handling for process termination signals and exit statuses.
+
+    ____ Dependencies ____:
+    - Requires Utils.hpp for utility functions like string splitting (Utils::split).
+    - Utilizes POSIX standard functions for process management (fork, execvp, kill, waitpid).
+*/
+
 #include "Process.hpp"
 #include "Utils.hpp"
+
 
 Process::Process(const std::string& name, const json& config)
     : name(name) {
@@ -123,8 +167,6 @@ void Process::monitorChildProcesses() {
             break;
         }
     }
-
-    // handleProcessCompletion();
 }
 
 pid_t Process::waitChildProcess(int& status) {
@@ -183,15 +225,6 @@ void Process::handleErrorWaitingForChildProcess() {
     perror("waitpid");
     exit(EXIT_FAILURE);
 }
-
-// void Process::handleProcessCompletion() {
-//     // if (failed_process) {
-//         cleanUpRemainingChildProcesses();
-//         exit(EXIT_FAILURE);
-//     // } else {
-//         std::cout << "All child processes completed successfully." << std::endl;
-//     // }
-// }
 
 void Process::cleanUpRemainingChildProcesses() {
     while (!child_pids.empty()) {

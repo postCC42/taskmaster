@@ -2,7 +2,7 @@
     "programs": {
         "system_monitor": {
             "command": "/usr/bin/top -b",
-            "instances": 1,
+            "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
