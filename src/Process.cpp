@@ -1,4 +1,5 @@
 #include "Process.hpp"
+#include "Utils.hpp"
 
 Process::Process(const std::string& name, const json& config)
     : name(name), pid(-1) {
@@ -63,12 +64,22 @@ void Process::start() {
         dup2(stdoutFd, STDOUT_FILENO);
         dup2(stderrFd, STDERR_FILENO);
 
-        execl("/bin/sh", "sh", "-c", command.c_str(), nullptr);
+        std::vector<std::string> args = Utils::split(command, ' ');
+        const char* argv[args.size() + 1];
+        for (size_t i = 0; i < args.size(); ++i) {
+            argv[i] = args[i].c_str();
+        }
+        argv[args.size()] = nullptr;
+
+        execvp(argv[0], const_cast<char* const*>(argv));
+
         _exit(EXIT_FAILURE);
     } else {
         std::cout << "Started process " << name << " with PID " << pid << std::endl;
     }
 }
+
+
 
 void Process::stop() {
     std::cout << "Stopping process " << name << " with PID " << pid << std::endl;
