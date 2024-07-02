@@ -162,9 +162,14 @@ void Process::handleSignalTermination(pid_t pid, int status, bool& failed_proces
     terminateAllChildProcesses();
 }
 
+
 void Process::terminateAllChildProcesses() {
-    for (pid_t p : child_pids) {
-        kill(p, SIGKILL);
+    for (pid_t pid : child_pids) {
+        // check pid <= 0 : je ne suis pas sur de comprendre. il ne semble pas necessaire, vu que pid = 0 est le process child qu'on veut tuer et pid < 0 est un erreur deja traité
+        std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
+        if (kill(pid, stopSignal) != 0) {
+            throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
+        }
     }
 }
 
@@ -174,7 +179,6 @@ void Process::handleErrorWaitingForChildProcess() {
 }
 
 void Process::handleProcessCompletion(bool failed_process) {
-    std::cout << "failed_process = " << failed_process << std::endl;
     if (failed_process) {
         cleanUpRemainingChildProcesses();
         exit(EXIT_FAILURE);
@@ -193,9 +197,9 @@ void Process::cleanUpRemainingChildProcesses() {
                 child_pids.erase(it);
             }
             if (WIFEXITED(status)) {
-                std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+                // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
             } else if (WIFSIGNALED(status)) {
-                std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
+                // std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
             }
         } else if (pid == -1) {
             perror("waitpid");
@@ -210,35 +214,8 @@ void Process::stop() {
     if (child_pids.empty()) {
         throw std::runtime_error("No child processes to stop");
     }
-    for (pid_t pid : child_pids) {
-        // check pid <= 0 : je ne suis pas sur de comprendre. il ne semble pas necessaire, vu que pid = 0 est le process child qu'on veut tuer et pid < 0 est un erreur deja traité
-        // if (pid <= 0) {
-        //     throw std::runtime_error("No valid process ID");
-        // }
-        std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
-        if (kill(pid, stopSignal) != 0) {
-            throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
-        }
-    }
-
-    int status;
-    pid_t pid;
-    while ((pid = waitpid(-1, &status, 0)) > 0) {
-        auto it = std::find(child_pids.begin(), child_pids.end(), pid);
-        if (it != child_pids.end()) {
-            child_pids.erase(it);
-        }
-        if (WIFEXITED(status)) {
-            // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
-        } else if (WIFSIGNALED(status)) {
-            // std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
-        }
-    }
-
-    if (pid == -1 && errno != ECHILD) {
-        perror("waitpid");
-        exit(EXIT_FAILURE);
-    }
+    terminateAllChildProcesses();
+    cleanUpRemainingChildProcesses();
 
     std::cout << "All processes instances of " << name << " stopped." << std::endl;
     child_pids.clear(); 
