@@ -24,6 +24,7 @@ class Process {
     public:
         explicit Process(const std::string& name, const json& config);
         void start();
+        void monitorChildProcesses();
         void stop();
         bool isRunning() const;
         std::string getStatus() const;
@@ -48,7 +49,9 @@ class Process {
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
 
         // TODO: the pid needs to be a collection
-        pid_t pid;
+        // pid_t pid;
+        std::vector<pid_t> child_pids;
+
 
         void parseConfig(const json& config);
         void setUpEnvironment();
