@@ -117,7 +117,7 @@ void Process::monitorChildProcesses() {
         int status;
         pid_t pid = waitChildProcess(status);
         if (pid > 0) {
-            handleChildExit(pid, status, failed_process); // Pass status to handleChildExit
+            handleChildExit(pid, status, failed_process);
         } else if (pid == -1) {
             handleErrorWaitingForChildProcess();
         } else if (pid == 0) {
@@ -165,6 +165,7 @@ void Process::handleSignalTermination(pid_t pid, int status, bool& failed_proces
 
 void Process::terminateAllChildProcesses() {
     for (pid_t pid : child_pids) {
+        // todo verify if condition is needed
         // check pid <= 0 : je ne suis pas sur de comprendre. il ne semble pas necessaire, vu que pid = 0 est le process child qu'on veut tuer et pid < 0 est un erreur deja traité
         std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
         if (kill(pid, stopSignal) != 0) {
