@@ -111,13 +111,12 @@ void Process::handleParentProcess(pid_t child_pid, int instanceNumber) {
 }
 
 void Process::monitorChildProcesses() {
-    bool failed_process = false;
 
     while (!child_pids.empty()) {
         int status;
         pid_t pid = waitChildProcess(status);
         if (pid > 0) {
-            handleChildExit(pid, status, failed_process);
+            handleChildExit(pid, status);
         } else if (pid == -1) {
             handleErrorWaitingForChildProcess();
         } else if (pid == 0) {
@@ -125,7 +124,7 @@ void Process::monitorChildProcesses() {
         }
     }
 
-    handleProcessCompletion(failed_process);
+    // handleProcessCompletion();
 }
 
 pid_t Process::waitChildProcess(int& status) {
@@ -133,33 +132,37 @@ pid_t Process::waitChildProcess(int& status) {
     return pid;
 }
 
-void Process::handleChildExit(pid_t pid, int status, bool& failed_process) {
+void Process::handleChildExit(pid_t pid, int status) {
     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
     if (it != child_pids.end()) {
         child_pids.erase(it);
     }
 
     if (WIFEXITED(status)) {
-        handleNormalChildExit(pid, status, failed_process);
+        handleNormalChildExit(pid, status);
     } else if (WIFSIGNALED(status)) {
-        handleSignalTermination(pid, status, failed_process);
+        handleSignalTermination(pid, status);
     }
 }
 
-void Process::handleNormalChildExit(pid_t pid, int status, bool& failed_process) {
-    std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+void Process::handleNormalChildExit(pid_t pid, int status) {
+    // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
     if (WEXITSTATUS(status) != 0) {
         std::cerr << "Child process " << pid << " failed. Exiting." << std::endl;
-        failed_process = true;
+        std::cerr << std::endl;
+        std::cerr << "If one of the instances fails to start, a config error might have been done. Our policy is to stop all the processes and exit" << std::endl;
+        std::cerr << "Please check the logs at " << stderrLog << ", update the config and try again" << std::endl;
+        std::cerr << std::endl;
         terminateAllChildProcesses();
+        exit(EXIT_FAILURE);
     }
 }
 
-void Process::handleSignalTermination(pid_t pid, int status, bool& failed_process) {
+void Process::handleSignalTermination(pid_t pid, int status) {
     std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
     std::cerr << "Exiting due to child process termination by signal." << std::endl;
-    failed_process = true;
     terminateAllChildProcesses();
+    exit(EXIT_FAILURE);
 }
 
 
@@ -172,6 +175,8 @@ void Process::terminateAllChildProcesses() {
             throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
         }
     }
+    cleanUpRemainingChildProcesses();
+    child_pids.clear();
 }
 
 void Process::handleErrorWaitingForChildProcess() {
@@ -179,14 +184,14 @@ void Process::handleErrorWaitingForChildProcess() {
     exit(EXIT_FAILURE);
 }
 
-void Process::handleProcessCompletion(bool failed_process) {
-    if (failed_process) {
-        cleanUpRemainingChildProcesses();
-        exit(EXIT_FAILURE);
-    } else {
-        std::cout << "All child processes completed successfully." << std::endl;
-    }
-}
+// void Process::handleProcessCompletion() {
+//     // if (failed_process) {
+//         cleanUpRemainingChildProcesses();
+//         exit(EXIT_FAILURE);
+//     // } else {
+//         std::cout << "All child processes completed successfully." << std::endl;
+//     // }
+// }
 
 void Process::cleanUpRemainingChildProcesses() {
     while (!child_pids.empty()) {
@@ -216,7 +221,6 @@ void Process::stop() {
         throw std::runtime_error("No child processes to stop");
     }
     terminateAllChildProcesses();
-    cleanUpRemainingChildProcesses();
 
     std::cout << "All processes instances of " << name << " stopped." << std::endl;
     child_pids.clear(); 

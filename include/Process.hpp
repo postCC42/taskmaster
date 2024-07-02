@@ -30,12 +30,12 @@ class Process {
         void handleParentProcess(pid_t child_pid, int instanceNumber);
         void monitorChildProcesses();
         pid_t waitChildProcess(int& status);
-        void handleChildExit(pid_t pid, int status, bool& failed_process); // Updated function declaration
-        void handleNormalChildExit(pid_t pid, int status, bool& failed_process);
-        void handleSignalTermination(pid_t pid, int status, bool& failed_process); 
+        void handleChildExit(pid_t pid, int status); 
+        void handleNormalChildExit(pid_t pid, int status);
+        void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
         void handleErrorWaitingForChildProcess();
-        void handleProcessCompletion(bool failed_process);
+        // void handleProcessCompletion();
         void cleanUpRemainingChildProcesses(); 
         void stop();
         bool isRunning() const;
