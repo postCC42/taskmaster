@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <algorithm>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -35,7 +36,6 @@ class Process {
         void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
         void handleErrorWaitingForChildProcess();
-        // void handleProcessCompletion();
         void cleanUpRemainingChildProcesses(); 
         void stop();
         bool isRunning() const;

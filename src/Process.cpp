@@ -93,7 +93,8 @@ void Process::start() {
     setUpEnvironment();
     child_pids.clear(); 
     startChildProcesses();
-    monitorChildProcesses();
+    std::thread monitorThread(&Process::monitorChildProcesses, this);
+    monitorThread.detach();
 }
 
 void Process::startChildProcesses() {
@@ -156,14 +157,18 @@ void Process::handleParentProcess(pid_t child_pid, int instanceNumber) {
 
 void Process::monitorChildProcesses() {
 
-    while (!child_pids.empty()) {
+    while (true) {
         int status;
         pid_t pid = waitChildProcess(status);
         if (pid > 0) {
             handleChildExit(pid, status);
         } else if (pid == -1) {
             handleErrorWaitingForChildProcess();
-        } else if (pid == 0) {
+        }
+
+        usleep(100000);
+
+        if (child_pids.empty()) {
             break;
         }
     }
@@ -192,8 +197,8 @@ void Process::handleNormalChildExit(pid_t pid, int status) {
     if (WEXITSTATUS(status) != 0) {
         std::cerr << "Child process " << pid << " failed. Exiting." << std::endl;
         std::cerr << std::endl;
-        std::cerr << "If one of the instances fails to start, a config error might have been done. Our policy is to stop all the processes and exit" << std::endl;
-        std::cerr << "Please check the logs at " << stderrLog << ", update the config and try again" << std::endl;
+        std::cerr << "If one of the instances fails to start, our policy is to stop all the processes and exit" << std::endl;
+        std::cerr << "Please check the logs at " << stderrLog << ",  and try again" << std::endl;
         std::cerr << std::endl;
         terminateAllChildProcesses();
         exit(EXIT_FAILURE);
@@ -210,8 +215,6 @@ void Process::handleSignalTermination(pid_t pid, int status) {
 
 void Process::terminateAllChildProcesses() {
     for (pid_t pid : child_pids) {
-        // todo verify if condition is needed
-        // check pid <= 0 : je ne suis pas sur de comprendre. il ne semble pas necessaire, vu que pid = 0 est le process child qu'on veut tuer et pid < 0 est un erreur deja traité
         std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
         if (kill(pid, stopSignal) != 0) {
             throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
