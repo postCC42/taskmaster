@@ -11,19 +11,39 @@ void TaskMaster::initializeProcesses() {
     json config = configParser.getConfig();
     std::cout << "initializeProcesses" << std::endl;
 
-    for (const auto& item : config.at("programs").items()) {
-        processes.emplace(item.key(), Process(item.key(), item.value()));
-        std::cout << "Process " << item.key() << " initialized" << std::endl;
-    }
+    try {
+        for (const auto& item : config.at("programs").items()) {
+            processes.emplace(item.key(), Process(item.key(), item.value()));
+            std::cout << "Process " << item.key() << " initialized" << std::endl;
+        }
 
-    startInitialProcesses();
+        startInitialProcesses();
+    } catch (const std::exception& ex) {
+        // std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
+        // process.stop();
+        stopAllProcesses();
+        exit(1); 
+    }
 }
 
 void TaskMaster::startInitialProcesses() {
-    for (auto&[name, process] : processes) {
-        // TODO: should be autostart
+    for (auto& [name, process] : processes) {
         if (process.getStartTime() == 1) {
-            process.start();
+            try {
+                process.start();
+                std::cout << "Started program " << name << std::endl;
+                usleep(1000000);
+                // Wait for the process to be verified as healthy
+                if (process.isRunning()) {
+                    std::cout << "Program " << name << " is healthy." << std::endl;
+                } else {
+                    std::cout << "Program " << name << " failed to start correctly." << std::endl;
+                    process.stop();
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
+                process.stop();
+            }
         }
     }
 }
@@ -37,7 +57,10 @@ void TaskMaster::commandLoop() {
             break;
         }
 
-        if (command == "exit") break;
+        if (command == "exit") {
+            stopAllProcesses();
+            break;
+        }
         handleCommand(command);
     }
 }
@@ -77,6 +100,11 @@ void TaskMaster::handleCommand(const std::string &command) {
     }
 }
 
+void TaskMaster::stopAllProcesses() {
+    for (auto& [name, process] : processes) {
+        process.stop();
+    }
+}
 
 Process* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);

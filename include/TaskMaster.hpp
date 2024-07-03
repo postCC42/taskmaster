@@ -32,6 +32,7 @@ class TaskMaster {
 		void startProcess(const std::string& processName);
 		void stopProcess(const std::string& processName);
 		Process* findProcess(const std::string& processName);
+		void stopAllProcesses();
 };
 
 #endif

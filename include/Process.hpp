@@ -31,7 +31,7 @@ class Process {
         void handleParentProcess(pid_t child_pid, int instanceNumber);
         void monitorChildProcesses();
         pid_t waitChildProcess(int& status);
-        void handleChildExit(pid_t pid, int status); 
+        void handleChildExit(pid_t pid); 
         void handleNormalChildExit(pid_t pid, int status);
         void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
@@ -59,10 +59,8 @@ class Process {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
+        std::vector<bool> instanceRunning;
         bool running;
-
-        // TODO: the pid needs to be a collection
-        // pid_t pid;
         std::vector<pid_t> child_pids;
 
 
