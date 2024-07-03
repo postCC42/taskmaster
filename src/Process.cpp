@@ -46,7 +46,7 @@ ____ Process Management Class ____
 
 
 Process::Process(const std::string& name, const json& config)
-    : name(name) {
+    : name(name), running(false) {
     parseConfig(config);
 }
 
@@ -112,11 +112,8 @@ void Process::startChildProcesses() {
 
 void Process::handleForkFailure(int instanceNumber) {
     std::cerr << "Failed to fork process for instance " << instanceNumber << std::endl;
-    for (pid_t pid : child_pids) {
-        kill(pid, SIGKILL);
-    }
-    std::cerr << "Exiting due to fork failure." << std::endl;
-    exit(EXIT_FAILURE);
+    terminateAllChildProcesses();
+    throw std::runtime_error("Fork failure for instance " + std::to_string(instanceNumber));
 }
 
 void Process::runChildProcess() {

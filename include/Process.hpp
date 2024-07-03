@@ -59,6 +59,7 @@ class Process {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
+        bool running;
 
         // TODO: the pid needs to be a collection
         // pid_t pid;
