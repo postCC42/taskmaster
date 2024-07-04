@@ -1,7 +1,43 @@
+/*
+____ TaskMaster Class ____
+
+    ____ Initialization and Configuration Parsing ____:
+    - Handles initialization of process parameters such as command, instances, and environment variables from a JSON configuration.
+
+    Functions:
+    - TaskMaster(const std::string& configFilePath): Constructor initializing TaskMaster with a configuration file path, displaying usage information, initializing processes, and starting the command loop.
+    - initializeProcesses(): Reads and parses configuration data to initialize Process instances for each program defined in the configuration file.
+    - startInitialProcesses(): Starts processes configured to begin immediately upon initialization based on their startup time.
+    - findProcess(const std::string& processName): Retrieves a pointer to a Process instance by its name for command handling and management.
+
+    ____ Command Handling ____:
+    - Manages user commands for process control and status checking.
+
+    Functions:
+    - commandLoop(): Enters a loop to continuously accept and process user commands (start, stop, status, exit).
+    - handleCommand(const std::string& command): Parses and executes user commands to manage processes (start <process_name>, stop <process_name>, status, exit).
+    - startProcess(const std::string& processName): Initiates the startup of a specified process by name, handles startup errors, and displays status messages.
+    - stopProcess(const std::string& processName): Terminates a running process by name, ensuring proper cleanup and management of child processes.
+    - stopAllProcesses(): Stops all managed processes, ensuring all child processes are terminated gracefully.
+    - displayStatus(): Retrieves and displays the current running status of all managed processes (Running or Stopped).
+    - stringToCommand(const std::string& commandStr): Converts a string command to its corresponding enum Command type for command processing.
+    - displayUsage(): Displays usage instructions including implemented and to-be-implemented commands.
+
+    ____ Utility and Signal Handling ____:
+    - Provides utility functions and signal handling for process management.
+
+    Functions:
+    - signalHandler(int signal): Handles signals such as SIGINT to ensure graceful termination of processes.
+
+*/
+
 #include "TaskMaster.hpp"
 #include "Utils.hpp"
 
 std::map<std::string, Process> TaskMaster::processes;
+
+// ___________________ INIT AND CONFIG PARSE ___________________
+
 
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
     std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
@@ -22,8 +58,8 @@ void TaskMaster::initializeProcesses() {
         startInitialProcesses();
         signal(SIGINT, Utils::sigintHandler);
     } catch (const std::exception& ex) {
+        // todo handle restart attempt and logs to user
         // std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
-        // process.stop();
         stopAllProcesses();
         exit(1); 
     }
@@ -36,13 +72,25 @@ void TaskMaster::startInitialProcesses() {
                 startProcess(name);
             } catch (const std::exception& ex) {
                 std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
-                // process.stop();
-                stopAllProcesses();
+                process.stop();
                 exit(1); 
             }
         }
     }
 }
+
+Process* TaskMaster::findProcess(const std::string& processName) {
+    auto it = processes.find(processName);
+    if (it != processes.end()) {
+        return &it->second;
+    } else {
+        std::cout << "Process not found: " << processName << std::endl;
+        return nullptr;
+    }
+}
+
+// ___________________ COMMAND HANDLING ___________________
+
 
 void TaskMaster::commandLoop() {
     std::string command;
@@ -95,30 +143,14 @@ void TaskMaster::handleCommand(const std::string &command) {
     }
 }
 
-void TaskMaster::stopAllProcesses() {
-    for (auto& [name, process] : processes) {
-        process.stop();
-    }
-}
 
-Process* TaskMaster::findProcess(const std::string& processName) {
-    auto it = processes.find(processName);
-    if (it != processes.end()) {
-        return &it->second;
-    } else {
-        std::cout << "Process not found: " << processName << std::endl;
-        return nullptr;
-    }
-}
 
 void TaskMaster::startProcess(const std::string& processName) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
          try {
                 process->start();
-                // std::cout << "Started program " << processName << std::endl;
                 usleep(1000000);
-                // Wait for the process to be verified as healthy
                 if (process->isRunning()) {
                     std::cout << "All instances configured for the program ";
                     std::cout << GREEN << processName << RESET;
@@ -133,16 +165,24 @@ void TaskMaster::startProcess(const std::string& processName) {
             } catch (const std::exception& ex) {
                 std::cerr << "Error starting program " << processName << ": " << ex.what() << std::endl;
                 // todo display message for user
-                stopAllProcesses();
+                process.stop();
                 exit(1); 
             }
     }
 }
 
+
 void TaskMaster::stopProcess(const std::string& processName) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
         process->stop();
+    }
+}
+
+
+void TaskMaster::stopAllProcesses() {
+    for (auto& [name, process] : processes) {
+        process.stop();
     }
 }
 
@@ -157,6 +197,8 @@ void TaskMaster::displayStatus() {
         }
     }
 }
+
+// ___________________ USAGE ___________________
 
 void TaskMaster::displayUsage() {
     std::cout << "Usage:" << std::endl;
