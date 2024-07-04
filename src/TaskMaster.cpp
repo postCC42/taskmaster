@@ -12,7 +12,6 @@ TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(confi
 
 void TaskMaster::initializeProcesses() {
     json config = configParser.getConfig();
-    std::cout << "initializeProcesses" << std::endl;
 
     try {
         for (const auto& item : config.at("programs").items()) {
@@ -73,8 +72,6 @@ void TaskMaster::commandLoop() {
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
-    std::cout << "Handling command: " << command << std::endl;
-
     std::vector<std::string> words = Utils::split(command, ' ');
 
     if (words.empty()) {
@@ -133,10 +130,18 @@ void TaskMaster::startProcess(const std::string& processName) {
                 usleep(1000000);
                 // Wait for the process to be verified as healthy
                 if (process->isRunning()) {
-                    std::cout << "All instances configured for the program " << processName << " have started successfully." << std::endl;
+                    std::cout << std::endl;
+                    std::cout << "All instances configured for the program ";
+                    std::cout << GREEN << processName << RESET;
+                    std::cout << " have started successfully." << std::endl;
+                    std::cout << std::endl;
                 } else {
                     // TODO: Add logic for number of restarts from config
-                    std::cout << "One or more instances configured for the program " << processName << " failed to start correctly. The program will be stopped. Please check the logs for details." << std::endl;
+                    std::cout << std::endl;
+                    std::cout << "One or more instances configured for the program ";
+                    std::cout << GREEN << processName << RESET;
+                    std::cout << " failed to start correctly. The program will be stopped. Please check the logs for details." << std::endl;
+                    std::cout << std::endl;
                     process->stop();
                 }
             } catch (const std::exception& ex) {

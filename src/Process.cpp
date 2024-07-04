@@ -258,7 +258,9 @@ void Process::stop() {
         }
     }
 
-    std::cout << "All processes of the program " << name << " stopped." << std::endl;
+    std::cout << "All processes of the program ";
+    std::cout << GREEN << name << RESET;
+    std::cout << " stopped." << std::endl;
 }
 
 
