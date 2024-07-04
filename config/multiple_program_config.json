@@ -18,6 +18,22 @@
                 "GREETING=Hello evaluator, good luck!",
                 "AUTHORS=Clem and Mathia"
             ]
+        },
+        "system_monitor": {
+            "command": "/usr/bin/top -b",
+            "instances": 3,
+            "auto_start": true,
+            "auto_restart": "unexpected",
+            "start_time": 1,
+            "stop_time": 5,
+            "restart_attempts": 3,
+            "stop_signal": "SIGTERM",
+            "expected_exit_codes": [0],
+            "working_directory": "/tmp/",
+            "umask": -1,
+            "stdout_log": "/tmp/system_monitor_output.log",
+            "stderr_log": "/tmp/system_monitor_error.log",
+            "environment_variables": []
         }
     },
     "logging_enabled": true,

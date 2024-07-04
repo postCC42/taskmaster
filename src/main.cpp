@@ -6,7 +6,7 @@ int main(const int argc, char* argv[]) {
     (void)argc;
     (void)argv;
 
-    const std::string configFilePath = "./config/web_server_config.json";
+    const std::string configFilePath = "./config/multiple_program_config.json";
 
     try {
         TaskMaster taskmaster(configFilePath);

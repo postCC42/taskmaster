@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <algorithm>
 #include <thread>
+#include "colors.hpp"
 
 using json = nlohmann::json;
 
@@ -28,18 +29,23 @@ class Process {
         void startChildProcesses();
         void handleForkFailure(int instanceNumber);
         void runChildProcess();
-        void handleParentProcess(pid_t child_pid, int instanceNumber);
+        void handleParentProcess(pid_t child_pid);
         void monitorChildProcesses();
         pid_t waitChildProcess(int& status);
-        void handleChildExit(pid_t pid, int status); 
+        void handleChildExit(pid_t pid); 
         void handleNormalChildExit(pid_t pid, int status);
         void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
         void handleErrorWaitingForChildProcess();
-        void cleanUpRemainingChildProcesses(); 
         void stop();
+        bool checkNoInstancesLeft() const;
+        bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
+        void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
+        void cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase);
+        void notifyAllStopped();
         bool isRunning() const;
         std::string getStatus() const;
+        int countRunningInstances() const;
         std::string getName() const;
         int getStartTime() const { return startTime; }
 
@@ -59,9 +65,8 @@ class Process {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
-
-        // TODO: the pid needs to be a collection
-        // pid_t pid;
+        // std::vector<bool> instanceRunning;
+        // bool running;
         std::vector<pid_t> child_pids;
 
 

@@ -8,17 +8,19 @@
 #include "ConfigParser.hpp"
 #include "Process.hpp"
 #include "Utils.hpp"
+#include "colors.hpp"
 
 class TaskMaster {
 	public:
 		explicit TaskMaster(const std::string& configFilePath);
 		// TODO: add destructor to stop all
 		void initializeProcesses();
+		static void stopAllProcesses();
 
 	private:
 		std::string configFilePath;
 		ConfigParser configParser;
-		std::map<std::string, Process> processes;
+		static std::map<std::string, Process> processes;
 
 		const std::string statusCmd = "status";
     	const std::string startCmd = "start";
