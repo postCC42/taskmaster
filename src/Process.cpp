@@ -422,7 +422,8 @@ bool Process::isRunning() const {
 }
 
 std::string Process::getStatus() const {
-    return isRunning() ? "Running" : "Stopped";
+    int runningCount = std::count(instanceRunning.begin(), instanceRunning.end(), true);
+    return std::to_string(runningCount) + " out of " + std::to_string(instances) + " instances running";
 }
 
 std::string Process::getName() const {
