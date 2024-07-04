@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <algorithm>
 #include <thread>
+#include "colors.h"
 
 using json = nlohmann::json;
 

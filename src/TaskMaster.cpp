@@ -129,13 +129,14 @@ void TaskMaster::startProcess(const std::string& processName) {
     if (process != nullptr) {
          try {
                 process->start();
-                std::cout << "Started program " << processName << std::endl;
+                // std::cout << "Started program " << processName << std::endl;
                 usleep(1000000);
                 // Wait for the process to be verified as healthy
                 if (process->isRunning()) {
-                    std::cout << "Program " << processName << " is healthy." << std::endl;
+                    std::cout << "All instances configured for the program " << processName << " have started successfully." << std::endl;
                 } else {
-                    std::cout << "Program " << processName << " failed to start correctly." << std::endl;
+                    // TODO: Add logic for number of restarts from config
+                    std::cout << "One or more instances configured for the program " << processName << " failed to start correctly. The program will be stopped. Please check the logs for details." << std::endl;
                     process->stop();
                 }
             } catch (const std::exception& ex) {

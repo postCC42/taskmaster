@@ -8,6 +8,7 @@
 #include "ConfigParser.hpp"
 #include "Process.hpp"
 #include "Utils.hpp"
+#include "colors.h"
 
 class TaskMaster {
 	public:
