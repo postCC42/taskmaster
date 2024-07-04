@@ -34,16 +34,6 @@ void TaskMaster::startInitialProcesses() {
         if (process.getStartTime() == 1) {
             try {
                 startProcess(name);
-                // process.start();
-                // std::cout << "Started program " << name << std::endl;
-                // usleep(1000000);
-                // // Wait for the process to be verified as healthy
-                // if (process.isRunning()) {
-                //     std::cout << "Program " << name << " is healthy." << std::endl;
-                // } else {
-                //     std::cout << "Program " << name << " failed to start correctly." << std::endl;
-                //     process.stop();
-                // }
             } catch (const std::exception& ex) {
                 std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
                 // process.stop();
@@ -57,7 +47,7 @@ void TaskMaster::startInitialProcesses() {
 void TaskMaster::commandLoop() {
     std::string command;
     while (true) {
-        std::cout << "taskmaster> ";
+        std::cout << YELLOW << "taskmaster> " << RESET;
         std::getline(std::cin, command);
         if (std::cin.eof()) {
             break;
@@ -130,18 +120,14 @@ void TaskMaster::startProcess(const std::string& processName) {
                 usleep(1000000);
                 // Wait for the process to be verified as healthy
                 if (process->isRunning()) {
-                    std::cout << std::endl;
                     std::cout << "All instances configured for the program ";
                     std::cout << GREEN << processName << RESET;
                     std::cout << " have started successfully." << std::endl;
-                    std::cout << std::endl;
                 } else {
                     // TODO: Add logic for number of restarts from config
-                    std::cout << std::endl;
                     std::cout << "One or more instances configured for the program ";
-                    std::cout << GREEN << processName << RESET;
+                    std::cout << RED << processName << RESET;
                     std::cout << " failed to start correctly. The program will be stopped. Please check the logs for details." << std::endl;
-                    std::cout << std::endl;
                     process->stop();
                 }
             } catch (const std::exception& ex) {
@@ -162,7 +148,13 @@ void TaskMaster::stopProcess(const std::string& processName) {
 
 void TaskMaster::displayStatus() {
     for (const auto& [name, process] : processes) {
-        std::cout << process.getName() << ": " << process.getStatus() << std::endl;
+        if (process.isRunning()){
+            std::cout << GREEN << process.getName() << RESET;
+            std::cout << ": " << process.getStatus() << std::endl;
+        } else {
+            std::cout << RED << process.getName() << RESET;
+            std::cout << ": " << process.getStatus() << std::endl;
+        }
     }
 }
 
@@ -170,13 +162,19 @@ void TaskMaster::displayUsage() {
     std::cout << "Usage:" << std::endl;
     std::cout << std::endl;
     std::cout << "Commands already implemented:" << std::endl;
-    std::cout << "start <program_name>: Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)" << std::endl;
-    std::cout << "stop <program_name>: Stop a running program by name." << std::endl;
-    std::cout << "status: Show the status of all programs." << std::endl;
-    std::cout << "exit: Exit the taskmaster." << std::endl;
+    std::cout << YELLOW << "start <program_name>: " << RESET; 
+    std::cout << "Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)" << std::endl;
+    std::cout << YELLOW <<  "stop <program_name>:" << RESET;
+    std::cout << "Stop a running program by name." << std::endl;
+    std::cout << YELLOW <<  "status: " << RESET;
+    std::cout << "Show the status of all programs." << std::endl;
+    std::cout << YELLOW <<  "exit: " << RESET;
+    std::cout << "Exit the taskmaster." << std::endl;
     std::cout << std::endl;
     std::cout << "Commands to be implemented:" << std::endl;
-    std::cout << "restart <program_name>: Restart a program by name." << std::endl;
-    std::cout << "reload <program_name>: Reload the configuration of a program without stopping it." << std::endl;
+    std::cout << YELLOW << "restart <program_name>: "<< RESET;
+    std::cout << "Restart a program by name." << std::endl;
+    std::cout << YELLOW << "reload <program_name>: " << RESET;
+    std::cout << "Reload the configuration of a program without stopping it." << std::endl;
     std::cout << std::endl;
 }

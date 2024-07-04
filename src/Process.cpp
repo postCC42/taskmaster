@@ -1,49 +1,50 @@
 /*
 ____ Process Management Class ____
 
-    ____ Overview ____:
-    - Manages child processes based on configuration settings.
-    - Provides methods to start, stop, and monitor processes.
+    ____ Initialization and Configuration Parsing ____:
+    - Handles initialization of process parameters such as command, instances, and environment variables from a JSON configuration.
 
-    ____ Constructor ____:
-    - Initializes the process with a name and configuration data.
+    Functions:
+    - Process(const std::string& name, const json& config): Constructor initializing the process with name and configuration.
+    - parseConfig(const json& config): Parses JSON config to set process parameters.
+    - setUpEnvironment(): Sets up environment variables based on configured values.
 
-    ____ Configuration Parsing ____:
-    - Parses a JSON configuration to set up process parameters such as command, instances, environment variables, etc.
+    ____ Process Start and Monitoring ____:
+    - Manages the creation and monitoring of child processes based on configured instances.
 
-    ____ Process Lifecycle ____:
-    - start(): Initiates child processes according to configured instances and manages their lifecycle.
-    - stop(): Terminates all child processes.
-    - isRunning(): Checks if any child processes are currently running.
+    Functions:
+    - start(): Initiates child processes and starts monitoring.
+    - startChildProcesses(): Forks child processes based on configured instances.
+    - monitorChildProcesses(): Monitors child processes for exit and status changes.
+    - runChildProcess(): Executes the command for each child process, manages directory changes, and redirects outputs.
+    - handleParentProcess(pid_t child_pid): Manages parent process responsibilities after forking.
+
+    ____ Process Stop and Synchronization ____:
+    - Handles termination of all child processes, including graceful and forced termination methods.
+
+    Functions:
+    - stop(): Initiates the process to stop all child processes.
+    - checkNoInstancesLeft(): Checks if there are no instances left to stop.
+    - stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase): Stops a specific child process gracefully.
+    - forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase): Forces termination of a specific child process.
+    - cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase): Cleans up and removes stopped child processes from tracking.
+    - notifyAllStopped(): Notifies when all instances of the program have been successfully stopped.
+
+    ____ Lifecycle and Status Checking ____:
+    - Provides methods to check if processes are running and retrieve their current status.
+
+    Functions:
+    - isRunning(): Checks if all configured instances of the process are currently running.
     - getStatus(): Retrieves the current status of the process (Running or Stopped).
-
-    ____ Child Process Management ____:
-    - startChildProcesses(): Forks child processes and manages process creation.
-    - monitorChildProcesses(): Monitors child processes for exit and handles exit statuses.
-    - terminateAllChildProcesses(): Stops all child processes forcefully in case of errors or termination signals.
-
-    ____ Error Handling ____:
-    - Provides robust error handling for process creation failures, execution errors, and termination issues.
-
-    ____ Methods ____:
-    - parseConfig(const json& config): Parses JSON configuration data to initialize process parameters.
-    - setUpEnvironment(): Sets up environment variables for child processes based on configured values.
-    - handleForkFailure(int instanceNumber): Handles failures during child process creation.
-    - runChildProcess(): Executes the command for each child process, handles directory changes, and redirects outputs.
-    - handleParentProcess(pid_t child_pid, int instanceNumber): Manages parent process responsibilities after forking.
-
-    ____ Additional Features ____:
-    - Supports configuration validation for critical parameters like number of instances and stop signals.
-    - Implements robust handling for process termination signals and exit statuses.
-
-    ____ Dependencies ____:
-    - Requires Utils.hpp for utility functions like string splitting (Utils::split).
-    - Utilizes POSIX standard functions for process management (fork, execvp, kill, waitpid).
+    - getName(): Retrieves the name of the process.
+    - countRunningInstances(): Counts and returns the number of currently running child processes.
 */
 
 #include "Process.hpp"
 #include "Utils.hpp"
 
+
+// ___________________ INIT AND PARSE ___________________
 
 Process::Process(const std::string& name, const json& config)
     : name(name), instances(0) {
@@ -85,6 +86,9 @@ void Process::setUpEnvironment() {
     }
 }
 
+// ___________________ START AND MONITOR ___________________
+
+
 void Process::start() {
     if (instances < 1) {
         throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
@@ -100,11 +104,11 @@ void Process::startChildProcesses() {
     for (int i = 0; i < instances; ++i) {
         pid_t child_pid = fork();
         if (child_pid < 0) {
-            handleForkFailure(i + 1);
+            handleForkFailure(i);
         } else if (child_pid == 0) {
             runChildProcess();
         } else {
-            handleParentProcess(child_pid, i + 1);
+            handleParentProcess(child_pid);
         }
     }
 }
@@ -145,9 +149,9 @@ void Process::runChildProcess() {
     }
 }
 
-void Process::handleParentProcess(pid_t child_pid, int instanceNumber) {
+void Process::handleParentProcess(pid_t child_pid) {
     child_pids.push_back(child_pid);
-    std::cout << "Started process " << name << " instance " << instanceNumber << " with PID " << child_pid << std::endl;
+    // std::cout << "Started process " << name << " with PID " << child_pid << std::endl;
 }
 
 void Process::monitorChildProcesses() {
@@ -196,128 +200,119 @@ void Process::handleErrorWaitingForChildProcess() {
     perror("waitpid");
 }
 
+
+// ___________________ STOP AND SYNCH ___________________
+
 void Process::stop() {
+    if (checkNoInstancesLeft()) {
+        return;
+    }
+
     std::vector<pid_t> pidsToErase;
-    int stop_time = 5;  // Number of attempts to stop gracefully
 
     while (!child_pids.empty()) {
         pidsToErase.clear();
 
         for (pid_t pid : child_pids) {
-            // std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
             if (pid <= 0) continue;
 
-            bool stopped = false;
-            int status;
-
-            // Attempt to stop the process gracefully
-            for (int attempt = 0; attempt < stop_time; ++attempt) {
-                if (kill(pid, stopSignal) == 0) {
-                    if (waitpid(pid, &status, WNOHANG) > 0) {
-                        if (WIFEXITED(status) || WIFSIGNALED(status)) {
-                            // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
-                            pidsToErase.push_back(pid);
-                            stopped = true;
-                            break;
-                        }
-                    }
-                } else {
-                    if (errno == ESRCH) {
-                        // std::cerr << "Process with PID " << pid << " does not exist." << std::endl;
-                        pidsToErase.push_back(pid);
-                        stopped = true;
-                        break;
-                    } else {
-                        // std::cerr << "Error sending signal to PID " << pid << ": " << strerror(errno) << std::endl;
-                    }
-                }
-                usleep(100000);  // Wait before retrying
-            }
-
-            // If the process did not stop gracefully, forcefully terminate it
+            bool stopped = stopProcess(pid, pidsToErase);
             if (!stopped) {
-                std::cerr << "Unable to stop process with PID " << pid << " gracefully, forcing termination" << std::endl;
-                if (kill(pid, SIGKILL) == 0) {
-                    while (waitpid(pid, &status, WNOHANG) == 0) {
-                        usleep(100000);  // Wait for the process to exit
-                    }
-                    // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+                forceStopProcess(pid, pidsToErase);
+            }
+        }
+
+        cleanupStoppedProcesses(pidsToErase);
+    }
+
+    notifyAllStopped();
+}
+
+bool Process::checkNoInstancesLeft() const {
+    if (child_pids.empty()) {
+        std::cout << "Checking... No instances of the program ";
+        std::cout << GREEN << name << RESET;
+        std::cout << " left to stop." << std::endl;
+        return true;
+    }
+    return false;
+}
+
+bool Process::stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
+    int status;
+
+    for (int attempt = 0; attempt < stopTime; ++attempt) {
+        if (kill(pid, stopSignal) == 0) {
+            if (waitpid(pid, &status, WNOHANG) > 0) {
+                if (WIFEXITED(status) || WIFSIGNALED(status)) {
                     pidsToErase.push_back(pid);
-                } else {
-                    // std::cerr << "Failed to forcefully terminate process with PID " << pid << std::endl;
-                    if (errno == ESRCH) {
-                        pidsToErase.push_back(pid);
-                    }
+                    return true;
                 }
             }
+        } else {
+            if (errno == ESRCH) {
+                pidsToErase.push_back(pid);
+                return true;
+            }
         }
-
-        // Remove the stopped PIDs from child_pids
-        for (pid_t pid : pidsToErase) {
-            child_pids.erase(std::remove(child_pids.begin(), child_pids.end(), pid), child_pids.end());
-        }
+        usleep(100000);  // Wait before retrying
     }
 
-    std::cout << "All processes of the program ";
+    return false;
+}
+
+void Process::forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
+    int status;
+
+    std::cerr << "Unable to stop process with PID " << pid << " gracefully, forcing termination" << std::endl;
+    if (kill(pid, SIGKILL) == 0) {
+        while (waitpid(pid, &status, WNOHANG) == 0) {
+            usleep(100000);  // Wait for the process to exit
+        }
+        pidsToErase.push_back(pid);
+    } else {
+        if (errno == ESRCH) {
+            pidsToErase.push_back(pid);
+        }
+    }
+}
+
+void Process::cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase) {
+    child_pids.erase(std::remove_if(child_pids.begin(), child_pids.end(),
+                                    [&](pid_t pid) {
+                                        return std::find(pidsToErase.begin(), pidsToErase.end(), pid) != pidsToErase.end();
+                                    }),
+                     child_pids.end());
+}
+
+void Process::notifyAllStopped() {
+    std::cout << "All instances of the program ";
     std::cout << GREEN << name << RESET;
-    std::cout << " stopped." << std::endl;
+    std::cout << " have been successfully stopped." << std::endl;
 }
 
+// ___________________ CHECK LIFECYCLE ___________________
 
-
-
-
-
-// void Process::terminateAllChildProcesses() {
-//     for (pid_t pid : child_pids) {
-//         std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
-//         if (kill(pid, stopSignal) != 0) {
-//             throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
-//         }
-//     }
-//     child_pids.clear();
-//     // cleanUpRemainingChildProcesses();
-// }
-
-void Process::cleanUpRemainingChildProcesses() {
-    while (!child_pids.empty()) {
-        int status;
-        pid_t pid = waitpid(-1, &status, 0);
-        if (pid > 0) {
-            auto it = std::find(child_pids.begin(), child_pids.end(), pid);
-            if (it != child_pids.end()) {
-                child_pids.erase(it);
-            }
-            if (WIFEXITED(status)) {
-                // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
-            } else if (WIFSIGNALED(status)) {
-                // std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
-            }
-        } else if (pid == -1) {
-            perror("waitpid");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
 
 bool Process::isRunning() const {
-    int runningCount = 0;    
-    for (pid_t pid : child_pids) {
-        if (pid)
-            runningCount += 1;
-    }
-    return (runningCount == instances);
+    return countRunningInstances() == instances;
 }
 
 std::string Process::getStatus() const {
-    int runningCount = 0;    
-    for (pid_t pid : child_pids) {
-        if (pid)
-            runningCount += 1;
-    }
+    int runningCount = countRunningInstances();
     return std::to_string(runningCount) + " out of " + std::to_string(instances) + " instances running";
 }
 
 std::string Process::getName() const {
     return name;
+}
+
+int Process::countRunningInstances() const {
+    int runningCount = 0;
+    for (pid_t pid : child_pids) {
+        if (pid > 0) {
+            runningCount++;
+        }
+    }
+    return runningCount;
 }
