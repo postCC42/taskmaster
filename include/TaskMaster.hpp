@@ -14,11 +14,12 @@ class TaskMaster {
 		explicit TaskMaster(const std::string& configFilePath);
 		// TODO: add destructor to stop all
 		void initializeProcesses();
+		static void stopAllProcesses();
 
 	private:
 		std::string configFilePath;
 		ConfigParser configParser;
-		std::map<std::string, Process> processes;
+		static std::map<std::string, Process> processes;
 
 		const std::string statusCmd = "status";
     	const std::string startCmd = "start";
@@ -32,7 +33,6 @@ class TaskMaster {
 		void startProcess(const std::string& processName);
 		void stopProcess(const std::string& processName);
 		Process* findProcess(const std::string& processName);
-		void stopAllProcesses();
 };
 
 #endif

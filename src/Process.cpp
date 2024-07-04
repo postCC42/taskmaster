@@ -105,11 +105,11 @@ void Process::startChildProcesses() {
     for (int i = 0; i < instances; ++i) {
         pid_t child_pid = fork();
         if (child_pid < 0) {
-            handleForkFailure(i + 1); // instance numbers start from 1
+            handleForkFailure(i + 1);
         } else if (child_pid == 0) {
             runChildProcess();
         } else {
-            handleParentProcess(child_pid, i + 1); // instance numbers start from 1
+            handleParentProcess(child_pid, i + 1);
         }
     }
 }
@@ -152,18 +152,24 @@ void Process::runChildProcess() {
 
 void Process::handleParentProcess(pid_t child_pid, int instanceNumber) {
     child_pids.push_back(child_pid);
-    instanceRunning[instanceNumber - 1] = true; // instance numbers start from 1
+    instanceRunning[instanceNumber - 1] = true;
     std::cout << "Started process " << name << " instance " << instanceNumber << " with PID " << child_pid << std::endl;
 }
 
 void Process::monitorChildProcesses() {
     while (true) {
         int status;
+
         pid_t pid = waitpid(-1, &status, WNOHANG);
         if (pid > 0) {
             handleChildExit(pid);
         } else if (pid == -1) {
-            handleErrorWaitingForChildProcess();
+            if (errno == ECHILD) {
+                // No more child processes to wait for
+                break;
+            } else {
+                handleErrorWaitingForChildProcess();
+            }
         }
 
         usleep(100000);
@@ -183,48 +189,206 @@ void Process::monitorChildProcesses() {
     }
 }
 
+
 void Process::handleChildExit(pid_t pid) {
+    int status;
+    // Wait for the child process to change state and get its exit status
+    std::cout << "waitpid in handlechild" << std::endl;
+    // if (waitpid(pid, &status, 0) == -1) {
+    //     std::cout << "process with pid " << pid << "terminated unexpectedly. Please check logs" << std::endl;
+    //     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+    //     if (it != child_pids.end()) {
+    //         child_pids.erase(it); // Erase the element pointed to by 'it'
+    //     }
+    //     perror("waitpid");
+    //     return;
+    // }
+
     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
     if (it != child_pids.end()) {
         int index = std::distance(child_pids.begin(), it);
         instanceRunning[index] = false;
         child_pids.erase(it);
     }
+
+    // Log the exit status of the child process
+    if (WIFEXITED(status)) {
+        std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+    } else if (WIFSIGNALED(status)) {
+        std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
+    } else {
+        std::cerr << "Child process " << pid << " exited with unknown status" << std::endl;
+    }
 }
+
+// void Process::handleChildExit(pid_t pid) {
+//     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+//     if (it != child_pids.end()) {
+//         int index = std::distance(child_pids.begin(), it);
+//         instanceRunning[index] = false;
+//         child_pids.erase(it);
+//     }
+// }
 
 void Process::handleErrorWaitingForChildProcess() {
     perror("waitpid");
 }
 
 void Process::stop() {
-    std::vector<pid_t> processesToStop = child_pids;
+    std::vector<pid_t> pidsToErase;
 
-    for (pid_t pid : processesToStop) {
+    // Print the PIDs being stopped
+    std::cout << "PIDs in program being stopped:" << std::endl;
+    for (pid_t pid : child_pids) {
+        std::cout << pid << " ";
+    }
+    std::cout << std::endl;
+
+    // Iterate over child_pids to stop processes
+    for (pid_t pid : child_pids) {
+        std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
+
         if (pid <= 0) {
             continue;  // Skip invalid PIDs
         }
 
         int status;
         pid_t result = waitpid(pid, &status, WNOHANG);
+        std::cout << "waitpid in handlechild " << std::endl;
 
-        if (result <= -1) {
-            continue;
-        } else if (result == 0) {
+        if (result == 0) {
             // Process is still running or zombie, attempt to stop it
-            std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
             if (kill(pid, stopSignal) != 0) {
                 throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
             }
-        } else {
+
+            // Wait for the process to exit
+            while (true) {
+                std::cout << "pid in while: " << pid << std::endl;
+                result = waitpid(pid, &status, WNOHANG);
+                std::cout << "result in while: " << result << std::endl;
+
+                if (result > 0) {
+                    std::cout << "Child process " << pid << " exited with status " << status << std::endl;
+                    pidsToErase.push_back(pid);
+                    break;
+                } else if (result == 0) {
+                    usleep(100000);  // Wait for a short period
+                } else if (result == -1) {
+                    if (errno == ECHILD) {
+                        std::cout << "No more child processes to wait for" << std::endl;
+                        break;
+                    } else {
+                        std::cerr << "Error waiting for process " << pid << " to exit: " << strerror(errno) << std::endl;
+                        break;
+                    }
+                }
+            }
+        } else if (result > 0) {
             // Process has already exited (result > 0)
             std::cout << "Process " << pid << " has already exited" << std::endl;
+            pidsToErase.push_back(pid);
+        } else {
+            // Handle waitpid error (result < 0)
+            std::cerr << "Error waiting for process " << pid << ": " << strerror(errno) << std::endl;
         }
     }
 
-    cleanUpRemainingChildProcesses();
+    // Erase PIDs of stopped processes from child_pids
+    for (pid_t pid : pidsToErase) {
+        auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+        if (it != child_pids.end()) {
+            child_pids.erase(it);
+        }
+    }
+
+    // Clear child_pids and update running state
     child_pids.clear();
     running = false;
     std::cout << "All instances of " << name << " stopped." << std::endl;
+}
+
+
+// void Process::stop() {
+//     std::vector<pid_t> pidsToErase;
+
+//     // Print the PIDs being stopped
+//     std::cout << "pids in program being stopped : " << std::endl;
+//     for (pid_t pid : child_pids) {
+//         std::cout << pid << " ";
+//     }
+//     std::cout << std::endl;
+
+//     // Iterate over child_pids to stop processes
+//     for (pid_t pid : child_pids) {
+//         std::cout << "pid: " << pid << std::endl;
+//         if (pid <= 0) {
+//             continue;  // Skip invalid PIDs
+//         }
+
+//         int status;
+//         pid_t result = waitpid(pid, &status, WNOHANG);
+//         std::cout << "result: " << result << std::endl;
+//         usleep(100000);
+
+//         if (result == 0) {
+//             // Process is still running or zombie, attempt to stop it
+//             std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
+//             if (kill(pid, stopSignal) != 0) {
+//                 throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
+//             }
+//              while (true) {
+//                 std::cout << "pid in while: " << pid << std::endl;
+//                 result = waitpid(pid, &status, WNOHANG);
+//                 if (result > 0) {
+//                     std::cout << "Process " << pid << " has exited with status " << status << std::endl;
+//                     pidsToErase.push_back(pid);
+//                     break;
+//                 } else if (result < 0) {
+//                     if (errno == ECHILD) {
+//                         std::cout << "No more child processes to wait for" << std::endl;
+//                         break;
+//                     } else {
+//                         std::cerr << "Error waiting for process " << pid << " to exit: " << strerror(errno) << std::endl;
+//                         break;
+//                     }
+//                 }
+//                 usleep(100000);
+//             }
+//         } else if (result > 0) {
+//             // Process has already exited (result > 0)
+//             std::cout << "Process " << pid << " has already exited" << std::endl;
+//             pidsToErase.push_back(pid);  // Collect PID to erase after loop
+//         }
+//     }
+
+//        // Erase PIDs of stopped processes from child_pids
+//     for (pid_t pid : pidsToErase) {
+//         auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+//         if (it != child_pids.end()) {
+//             child_pids.erase(it);
+//         }
+//     }
+
+//     // Clear child_pids and update running state
+//     child_pids.clear();
+//     running = false;
+//     std::cout << "All instances of " << name << " stopped." << std::endl;
+// }
+
+
+
+
+
+void Process::terminateAllChildProcesses() {
+    for (pid_t pid : child_pids) {
+        std::cout << "Stopping process " << name << " instance with PID " << pid << std::endl;
+        if (kill(pid, stopSignal) != 0) {
+            throw std::runtime_error("Failed to stop process with PID " + std::to_string(pid));
+        }
+    }
+    child_pids.clear();
+    // cleanUpRemainingChildProcesses();
 }
 
 void Process::cleanUpRemainingChildProcesses() {
@@ -234,13 +398,16 @@ void Process::cleanUpRemainingChildProcesses() {
         if (pid > 0) {
             auto it = std::find(child_pids.begin(), child_pids.end(), pid);
             if (it != child_pids.end()) {
-                int index = std::distance(child_pids.begin(), it);
-                instanceRunning[index] = false;
                 child_pids.erase(it);
+            }
+            if (WIFEXITED(status)) {
+                // std::cout << "Child process " << pid << " exited with status " << WEXITSTATUS(status) << std::endl;
+            } else if (WIFSIGNALED(status)) {
+                // std::cerr << "Child process " << pid << " terminated by signal " << WTERMSIG(status) << std::endl;
             }
         } else if (pid == -1) {
             perror("waitpid");
-            throw std::runtime_error("Error during cleanup waitpid");
+            exit(EXIT_FAILURE);
         }
     }
 }

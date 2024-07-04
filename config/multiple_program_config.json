@@ -2,7 +2,7 @@
     "programs": {
         "web_server": {
             "command": "/usr/bin/python3 http_server.py",
-            "instances": 3,
+            "instances": 1,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,

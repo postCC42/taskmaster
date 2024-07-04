@@ -1,4 +1,7 @@
 #include "TaskMaster.hpp"
+#include "Utils.hpp"
+
+std::map<std::string, Process> TaskMaster::processes;
 
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
     std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
@@ -18,6 +21,7 @@ void TaskMaster::initializeProcesses() {
         }
 
         startInitialProcesses();
+        signal(SIGINT, Utils::sigintHandler);
     } catch (const std::exception& ex) {
         // std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
         // process.stop();
@@ -30,19 +34,22 @@ void TaskMaster::startInitialProcesses() {
     for (auto& [name, process] : processes) {
         if (process.getStartTime() == 1) {
             try {
-                process.start();
-                std::cout << "Started program " << name << std::endl;
-                usleep(1000000);
-                // Wait for the process to be verified as healthy
-                if (process.isRunning()) {
-                    std::cout << "Program " << name << " is healthy." << std::endl;
-                } else {
-                    std::cout << "Program " << name << " failed to start correctly." << std::endl;
-                    process.stop();
-                }
+                startProcess(name);
+                // process.start();
+                // std::cout << "Started program " << name << std::endl;
+                // usleep(1000000);
+                // // Wait for the process to be verified as healthy
+                // if (process.isRunning()) {
+                //     std::cout << "Program " << name << " is healthy." << std::endl;
+                // } else {
+                //     std::cout << "Program " << name << " failed to start correctly." << std::endl;
+                //     process.stop();
+                // }
             } catch (const std::exception& ex) {
                 std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
-                process.stop();
+                // process.stop();
+                stopAllProcesses();
+                exit(1); 
             }
         }
     }
@@ -83,6 +90,7 @@ void TaskMaster::handleCommand(const std::string &command) {
         case Command::Start:
             if (words.size() > 1) {
                 startProcess(words[1]);
+                
             } else {
                 std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
             }
@@ -119,7 +127,23 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 void TaskMaster::startProcess(const std::string& processName) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
-        process->start();
+         try {
+                process->start();
+                std::cout << "Started program " << processName << std::endl;
+                usleep(1000000);
+                // Wait for the process to be verified as healthy
+                if (process->isRunning()) {
+                    std::cout << "Program " << processName << " is healthy." << std::endl;
+                } else {
+                    std::cout << "Program " << processName << " failed to start correctly." << std::endl;
+                    process->stop();
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "Error starting program " << processName << ": " << ex.what() << std::endl;
+                // process.stop();
+                stopAllProcesses();
+                exit(1); 
+            }
     }
 }
 
