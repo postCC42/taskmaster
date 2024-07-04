@@ -140,7 +140,7 @@ void TaskMaster::startProcess(const std::string& processName) {
                 }
             } catch (const std::exception& ex) {
                 std::cerr << "Error starting program " << processName << ": " << ex.what() << std::endl;
-                // process.stop();
+                // todo display message for user
                 stopAllProcesses();
                 exit(1); 
             }
