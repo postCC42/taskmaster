@@ -133,7 +133,6 @@ void Process::start() {
     if (instances < 1) {
         throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
     }
-    setUpEnvironment();
     child_pids.clear();
 
     for (int i = 0; i < instances; ++i) {
@@ -142,6 +141,7 @@ void Process::start() {
             throw std::runtime_error("Fork failure for instance " + std::to_string(i));
         }
         if (child_pid == 0) {
+            setUpEnvironment();
             runChildProcess();
         } else {
             child_pids.push_back(child_pid);
