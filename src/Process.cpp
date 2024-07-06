@@ -45,9 +45,7 @@ ____ Process Management Class ____
 
 
 // ___________________ INIT AND PARSE ___________________
-
-Process::Process(const std::string& name, const json& config)
-    : name(name), instances(0) {
+Process::Process(const std::string& name, const json& config) : name(name), instances(0) {
     parseConfig(config);
 }
 
@@ -87,35 +85,28 @@ void Process::setUpEnvironment() {
 }
 
 // ___________________ START AND MONITOR ___________________
-
-
 void Process::start() {
+    // TODO: test
     if (instances < 1) {
         throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
     }
     setUpEnvironment();
     child_pids.clear();
-    startChildProcesses();
-    std::thread monitorThread(&Process::monitorChildProcesses, this);
-    monitorThread.detach();
-}
 
-void Process::startChildProcesses() {
     for (int i = 0; i < instances; ++i) {
         pid_t child_pid = fork();
         if (child_pid < 0) {
-            handleForkFailure(i);
-        } else if (child_pid == 0) {
+            throw std::runtime_error("Fork failure for instance " + std::to_string(i));
+        }
+        if (child_pid == 0) {
             runChildProcess();
         } else {
-            handleParentProcess(child_pid);
+            child_pids.push_back(child_pid);
         }
     }
-}
 
-void Process::handleForkFailure(const int instanceNumber) {
-    std::cerr << "Failed to fork process for instance " << instanceNumber << std::endl;
-    throw std::runtime_error("Fork failure for instance " + std::to_string(instanceNumber));
+    std::thread monitorThread(&Process::monitorChildProcesses, this);
+    monitorThread.detach();
 }
 
 void Process::runChildProcess() const {
@@ -129,9 +120,7 @@ void Process::runChildProcess() const {
     }
 
     // Redirect stdout and stderr
-    const int stdoutFd = open(stdoutLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-    const int stderrFd = open(stderrLog.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (stdoutFd < 0 || stderrFd < 0 || dup2(stdoutFd, STDOUT_FILENO) < 0 || dup2(stderrFd, STDERR_FILENO) < 0) {
+    if (freopen(stdoutLog.c_str(), "a", stdout) == nullptr || freopen(stderrLog.c_str(), "a", stderr) == nullptr) {
         perror("Failed to redirect stdout/stderr");
         _exit(EXIT_FAILURE);
     }
@@ -149,11 +138,6 @@ void Process::runChildProcess() const {
     }
 }
 
-void Process::handleParentProcess(const pid_t child_pid) {
-    child_pids.push_back(child_pid);
-    // std::cout << "Started process " << name << " with PID " << child_pid << std::endl;
-}
-
 void Process::monitorChildProcesses() {
     while (true) {
         int status;
@@ -166,7 +150,7 @@ void Process::monitorChildProcesses() {
                 // No more child processes to wait for
                 break;
             } else {
-                handleErrorWaitingForChildProcess();
+                perror("waitpid");
             }
         }
 
@@ -195,11 +179,6 @@ void Process::handleChildExit(pid_t pid) {
         // std::cerr << "Child process " << pid << " exited with unknown status" << std::endl;
     }
 }
-
-void Process::handleErrorWaitingForChildProcess() {
-    perror("waitpid");
-}
-
 
 // ___________________ STOP AND SYNCH ___________________
 
@@ -270,10 +249,8 @@ void Process::forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
             usleep(100000);  // Wait for the process to exit
         }
         pidsToErase.push_back(pid);
-    } else {
-        if (errno == ESRCH) {
-            pidsToErase.push_back(pid);
-        }
+    } else if (errno == ESRCH) {
+        pidsToErase.push_back(pid);
     }
 }
 
@@ -293,24 +270,13 @@ void Process::notifyAllStopped() const {
 
 // ___________________ CHECK LIFECYCLE ___________________
 bool Process::isRunning() const {
-    return countRunningInstances() == instances;
+    return static_cast<int>(child_pids.size()) == instances;
 }
 
 std::string Process::getStatus() const {
-    const int runningCount = countRunningInstances();
-    return std::to_string(runningCount) + " out of " + std::to_string(instances) + " instances running";
+    return std::to_string(child_pids.size()) + " out of " + std::to_string(instances) + " instances running";
 }
 
 std::string Process::getName() const {
     return name;
-}
-
-int Process::countRunningInstances() const {
-    int runningCount = 0;
-    for (const pid_t pid : child_pids) {
-        if (pid > 0) {
-            runningCount++;
-        }
-    }
-    return runningCount;
 }

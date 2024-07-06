@@ -25,11 +25,8 @@ class Process {
     public:
         explicit Process(const std::string& name, const json& config);
         void start();
-        void startChildProcesses();
 
-        static void handleForkFailure(int instanceNumber);
         void runChildProcess() const;
-        void handleParentProcess(pid_t child_pid);
         void monitorChildProcesses();
         pid_t waitChildProcess(int& status);
         void handleChildExit(pid_t pid); 
@@ -37,7 +34,6 @@ class Process {
         void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
 
-        static void handleErrorWaitingForChildProcess();
         void stop();
         bool checkNoInstancesLeft() const;
         bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
@@ -46,7 +42,6 @@ class Process {
         void notifyAllStopped() const;
         bool isRunning() const;
         std::string getStatus() const;
-        int countRunningInstances() const;
         std::string getName() const;
         int getStartTime() const { return startTime; }
 

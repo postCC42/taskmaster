@@ -67,6 +67,7 @@ void TaskMaster::initializeProcesses() const {
 
 void TaskMaster::startInitialProcesses() {
     for (auto& [name, process] : processes) {
+        // TODO: should be autoStart
         if (process.getStartTime() == 1) {
             try {
                 startProcess(name);
@@ -80,42 +81,26 @@ void TaskMaster::startInitialProcesses() {
 }
 
 Process* TaskMaster::findProcess(const std::string& processName) {
-    const auto it = processes.find(processName);
-    if (it != processes.end()) {
-        return &it->second;
-    } else {
-        std::cout << "Process not found: " << processName << std::endl;
-        return nullptr;
-    }
+    auto it = processes.find(processName);
+    return it != processes.end() ? &it->second : nullptr;
 }
 
 // ___________________ COMMAND HANDLING ___________________
-
-
 void TaskMaster::commandLoop() {
     std::string command;
-    while (true) {
-        std::cout << YELLOW << "taskmaster> " << RESET;
-        std::getline(std::cin, command);
+    while (std::cout << "taskmaster> " && std::getline(std::cin, command) && command != "exit") {
         if (std::cin.eof()) {
-            break;
-        }
-
-        if (command == "exit") {
-            stopAllProcesses();
             break;
         }
         handleCommand(command);
     }
+    stopAllProcesses();
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
     const std::vector<std::string> words = Utils::split(command, ' ');
 
-    if (words.empty()) {
-        std::cout << "Invalid command." << std::endl;
-        return;
-    }
+    if (words.empty()) return;
 
     Command cmd = stringToCommand(words[0]);
     switch (cmd) {
@@ -125,7 +110,6 @@ void TaskMaster::handleCommand(const std::string &command) {
         case Command::Start:
             if (words.size() > 1) {
                 startProcess(words[1]);
-                
             } else {
                 std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
             }
@@ -150,6 +134,7 @@ void TaskMaster::startProcess(const std::string& processName) {
     if (process != nullptr) {
          try {
                 process->start();
+                // TODO: should use starttime
                 usleep(1000000);
                 if (process->isRunning()) {
                     std::cout << "All instances configured for the program ";
@@ -181,7 +166,7 @@ void TaskMaster::stopProcess(const std::string& processName) {
 
 
 void TaskMaster::stopAllProcesses() {
-    for (auto& [name, process] : processes) {
+    for (auto& [_, process] : processes) {
         process.stop();
     }
 }
@@ -190,11 +175,10 @@ void TaskMaster::displayStatus() {
     for (const auto& [name, process] : processes) {
         if (process.isRunning()){
             std::cout << GREEN << process.getName() << RESET;
-            std::cout << ": " << process.getStatus() << std::endl;
         } else {
             std::cout << RED << process.getName() << RESET;
-            std::cout << ": " << process.getStatus() << std::endl;
         }
+        std::cout << ": " << process.getStatus() << std::endl;
     }
 }
 
