@@ -49,18 +49,60 @@ Process::Process(const std::string& name, const json& config) : name(name), inst
     parseConfig(config);
 }
 
+// void Process::parseConfig(const json& config) {
+//     command = config.at("command").get<std::string>();
+//     instances = config.at("instances").get<int>();
+//     if (instances < 0) throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
+//     autoStart = config.at("auto_start").get<bool>();
+//     autoRestart = config.at("auto_restart").get<std::string>();
+//     if (autoRestart != "always" && autoRestart != "never" && autoRestart != "unexpected") {
+//         throw std::runtime_error("Invalid auto restart value: " + autoRestart);
+//     }
+//     startTime = config.at("start_time").get<int>();
+//     if (startTime < 0) throw std::runtime_error("Invalid start time: " + std::to_string(startTime));
+//     stopTime = config.at("stop_time").get<int>();
+//     if (stopTime < 0) throw std::runtime_error("Invalid stop time: " + std::to_string(stopTime));
+//     restartAttempts = config.at("restart_attempts").get<int>();
+//     if (restartAttempts < 0) throw std::runtime_error("Invalid restart attempts: " + std::to_string(restartAttempts));
+//
+//     std::string stopSignalStr = config.at("stop_signal").get<std::string>();
+//     if (signalMap.find(stopSignalStr) == signalMap.end()) {
+//         throw std::runtime_error("Invalid stop signal: " + stopSignalStr);
+//     }
+//     stopSignal = signalMap.at(stopSignalStr);
+//
+//     expectedExitCodes = config.at("expected_exit_codes").get<std::vector<int>>();
+//     workingDirectory = config.at("working_directory").get<std::string>();
+//     umaskInt = config.at("umask").get<int>();
+//     stdoutLog = config.at("stdout_log").get<std::string>();
+//     stderrLog = config.at("stderr_log").get<std::string>();
+//     for (const auto& envVar : config.at("environment_variables")) {
+//         std::string envVarStr = envVar.get<std::string>();
+//         const auto delimiterPos = envVarStr.find('=');
+//         auto key = envVarStr.substr(0, delimiterPos);
+//         const auto value = envVarStr.substr(delimiterPos + 1);
+//         environmentVariables[key] = value;
+//     }
+// }
 void Process::parseConfig(const json& config) {
     command = config.at("command").get<std::string>();
     instances = config.at("instances").get<int>();
+    if (instances < 0) throw std::runtime_error(name + ": Invalid number of instances: " + std::to_string(instances));
     autoStart = config.at("auto_start").get<bool>();
     autoRestart = config.at("auto_restart").get<std::string>();
+    if (autoRestart != "always" && autoRestart != "never" && autoRestart != "unexpected") {
+        throw std::runtime_error(name + ": Invalid auto restart value: " + autoRestart);
+    }
     startTime = config.at("start_time").get<int>();
+    if (startTime < 0) throw std::runtime_error(name + ": Invalid start time: " + std::to_string(startTime));
     stopTime = config.at("stop_time").get<int>();
+    if (stopTime < 0) throw std::runtime_error(name + ": Invalid stop time: " + std::to_string(stopTime));
     restartAttempts = config.at("restart_attempts").get<int>();
+    if (restartAttempts < 0) throw std::runtime_error(name + ": Invalid restart attempts: " + std::to_string(restartAttempts));
 
     std::string stopSignalStr = config.at("stop_signal").get<std::string>();
     if (signalMap.find(stopSignalStr) == signalMap.end()) {
-        throw std::runtime_error("Invalid stop signal: " + stopSignalStr);
+        throw std::runtime_error(name + ": Invalid stop signal: " + stopSignalStr);
     }
     stopSignal = signalMap.at(stopSignalStr);
 
@@ -80,6 +122,7 @@ void Process::parseConfig(const json& config) {
 
 void Process::setUpEnvironment() {
     for (const auto& [key, value] : environmentVariables) {
+        // TODO: can we use execvp instead of setenv?
         setenv(key.c_str(), value.c_str(), 1);
     }
 }

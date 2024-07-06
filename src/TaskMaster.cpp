@@ -58,10 +58,9 @@ void TaskMaster::initializeProcesses() const {
         startInitialProcesses();
         signal(SIGINT, Utils::sigintHandler);
     } catch (const std::exception& ex) {
-        // todo handle restart attempt and logs to user
-        // std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
+        std::cerr << "Error: " << ex.what() << std::endl;
         stopAllProcesses();
-        exit(1); 
+        exit(1);
     }
 }
 
