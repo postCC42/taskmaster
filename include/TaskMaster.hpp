@@ -14,7 +14,7 @@ class TaskMaster {
 	public:
 		explicit TaskMaster(const std::string& configFilePath);
 		// TODO: add destructor to stop all
-		void initializeProcesses();
+		void initializeProcesses() const;
 		static void stopAllProcesses();
 
 	private:
@@ -26,14 +26,14 @@ class TaskMaster {
     	const std::string startCmd = "start";
     	const std::string stopCmd = "stop";
 
-		void commandLoop();
-		void startInitialProcesses();
-		void handleCommand(const std::string& command);
-		void displayStatus();
-		void displayUsage();
-		void startProcess(const std::string& processName);
-		void stopProcess(const std::string& processName);
-		Process* findProcess(const std::string& processName);
+		static void startInitialProcesses();
+		static void commandLoop();
+		static void handleCommand(const std::string& command);
+		static void startProcess(const std::string& processName);
+		static void stopProcess(const std::string& processName);
+		static void displayStatus();
+		static void displayUsage();
+		static Process* findProcess(const std::string& processName);
 };
 
 #endif

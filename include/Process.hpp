@@ -14,7 +14,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <signal.h>
 #include <algorithm>
 #include <thread>
 #include "colors.hpp"
@@ -27,8 +26,9 @@ class Process {
         explicit Process(const std::string& name, const json& config);
         void start();
         void startChildProcesses();
-        void handleForkFailure(int instanceNumber);
-        void runChildProcess();
+
+        static void handleForkFailure(int instanceNumber);
+        void runChildProcess() const;
         void handleParentProcess(pid_t child_pid);
         void monitorChildProcesses();
         pid_t waitChildProcess(int& status);
@@ -36,13 +36,14 @@ class Process {
         void handleNormalChildExit(pid_t pid, int status);
         void handleSignalTermination(pid_t pid, int status); 
         void terminateAllChildProcesses();
-        void handleErrorWaitingForChildProcess();
+
+        static void handleErrorWaitingForChildProcess();
         void stop();
         bool checkNoInstancesLeft() const;
         bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
-        void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
+        static void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         void cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase);
-        void notifyAllStopped();
+        void notifyAllStopped() const;
         bool isRunning() const;
         std::string getStatus() const;
         int countRunningInstances() const;

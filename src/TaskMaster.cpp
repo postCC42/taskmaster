@@ -46,7 +46,7 @@ TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(confi
     commandLoop();
 }
 
-void TaskMaster::initializeProcesses() {
+void TaskMaster::initializeProcesses() const {
     json config = configParser.getConfig();
 
     try {
@@ -80,7 +80,7 @@ void TaskMaster::startInitialProcesses() {
 }
 
 Process* TaskMaster::findProcess(const std::string& processName) {
-    auto it = processes.find(processName);
+    const auto it = processes.find(processName);
     if (it != processes.end()) {
         return &it->second;
     } else {
@@ -110,7 +110,7 @@ void TaskMaster::commandLoop() {
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
-    std::vector<std::string> words = Utils::split(command, ' ');
+    const std::vector<std::string> words = Utils::split(command, ' ');
 
     if (words.empty()) {
         std::cout << "Invalid command." << std::endl;

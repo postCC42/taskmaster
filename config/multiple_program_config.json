@@ -3,7 +3,7 @@
         "web_server": {
             "command": "/usr/bin/python3 http_server.py",
             "instances": 1,
-            "auto_start": true,
+            "auto_start": false,
             "auto_restart": "unexpected",
             "start_time": 1,
             "stop_time": 5,
