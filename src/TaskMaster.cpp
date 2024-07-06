@@ -37,14 +37,17 @@ ____ TaskMaster Class ____
 std::map<std::string, Process> TaskMaster::processes;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
-
-
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
     std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
     displayUsage();
     initializeProcesses();
     commandLoop();
 }
+
+TaskMaster::~TaskMaster() {
+    stopAllProcesses();
+}
+
 
 void TaskMaster::initializeProcesses() const {
     json config = configParser.getConfig();
@@ -56,11 +59,11 @@ void TaskMaster::initializeProcesses() const {
         }
 
         startInitialProcesses();
-        signal(SIGINT, Utils::sigintHandler);
+        signal(SIGINT, Utils::signalHandler);
+        signal(SIGQUIT, Utils::signalHandler);
     } catch (const std::exception& ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
-        stopAllProcesses();
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -93,7 +96,6 @@ void TaskMaster::commandLoop() {
         }
         handleCommand(command);
     }
-    stopAllProcesses();
 }
 
 void TaskMaster::handleCommand(const std::string &command) {

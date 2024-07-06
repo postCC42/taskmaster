@@ -1,7 +1,7 @@
 #include "Utils.hpp"
 #include "TaskMaster.hpp"
 
-std::vector<std::string> Utils::split(const std::string &s, char delimiter) {
+std::vector<std::string> Utils::split(const std::string &s, const char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream tokenStream(s);
@@ -12,8 +12,8 @@ std::vector<std::string> Utils::split(const std::string &s, char delimiter) {
 }
 
 
-void Utils::sigintHandler(int sig) {
-    std::cout << "\nSIGINT received. Stopping all processes...\n";
+void Utils::signalHandler(int sig) {
+    std::cout << "\nsignal " << sig << " received. Stopping all processes...\n";
     TaskMaster::stopAllProcesses();
-    exit(sig); 
+    exit(sig);
 }

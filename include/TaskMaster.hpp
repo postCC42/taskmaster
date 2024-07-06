@@ -13,7 +13,7 @@
 class TaskMaster {
 	public:
 		explicit TaskMaster(const std::string& configFilePath);
-		// TODO: add destructor to stop all
+		~TaskMaster();
 		void initializeProcesses() const;
 		static void stopAllProcesses();
 

@@ -63,8 +63,6 @@ class Process {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
-        // std::vector<bool> instanceRunning;
-        // bool running;
         std::vector<pid_t> child_pids;
 
 

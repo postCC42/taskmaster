@@ -11,7 +11,7 @@
 class Utils {
     public:
         static std::vector<std::string> split(const std::string &s, char delimiter);
-        static void sigintHandler(int sig);
+        static void signalHandler(int sig);
 };
 
 #endif
