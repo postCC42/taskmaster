@@ -10,5 +10,8 @@ Command stringToCommand(const std::string& str) {
     if (str == "stop") {
         return Command::Stop;
     }
+    if (str == "restart") {
+        return Command::Restart;
+    }
     return Command::Unknown;
 }

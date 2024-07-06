@@ -7,6 +7,7 @@ enum class Command {
     Status,
     Start,
     Stop,
+    Restart,
     Unknown
 };
 

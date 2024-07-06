@@ -19,8 +19,8 @@
                 "AUTHORS=Clem and Mathia"
             ]
         },
-        "system_monitor": {
-            "command": "/usr/bin/top11 -b",
+        "top": {
+            "command": "/usr/bin/top -b",
             "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",

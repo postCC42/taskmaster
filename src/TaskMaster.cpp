@@ -102,6 +102,8 @@ void TaskMaster::handleCommand(const std::string &command) {
 
     if (words.empty()) return;
 
+    // TODO: should we manage restart prog1 prog2 ?
+
     Command cmd = stringToCommand(words[0]);
     switch (cmd) {
         case Command::Status:
@@ -119,6 +121,13 @@ void TaskMaster::handleCommand(const std::string &command) {
                 stopProcess(words[1]);
             } else {
                 std::cout << "Invalid command format. Usage: stop <process_name>" << std::endl;
+            }
+            break;
+        case Command::Restart:
+            if (words.size() > 1) {
+                restartProcess(words[1]);
+            } else {
+                std::cout << "Invalid command format. Usage: restart <process_name>" << std::endl;
             }
             break;
         default:
@@ -164,6 +173,14 @@ void TaskMaster::stopProcess(const std::string& processName) {
     }
 }
 
+void TaskMaster::restartProcess(const std::string &processName) {
+    Process* process = findProcess(processName);
+    if (process != nullptr) {
+        std::cout << "Restarting " << GREEN << processName << RESET << std::endl;
+        process->stop();
+        startProcess(processName);
+    }
+}
 
 void TaskMaster::stopAllProcesses() {
     for (auto& [_, process] : processes) {
