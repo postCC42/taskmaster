@@ -44,6 +44,8 @@ class Process {
         std::string getStatus() const;
         std::string getName() const;
         int getStartTime() const { return startTime; }
+        int getAutoStart() const { return autoStart; }
+        int getRestartAttempts() const { return restartAttempts; }
 
     private:
         std::string name;

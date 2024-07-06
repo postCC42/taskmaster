@@ -181,7 +181,6 @@ void Process::handleChildExit(pid_t pid) {
 }
 
 // ___________________ STOP AND SYNCH ___________________
-
 void Process::stop() {
     if (checkNoInstancesLeft()) {
         return;
@@ -209,9 +208,7 @@ void Process::stop() {
 
 bool Process::checkNoInstancesLeft() const {
     if (child_pids.empty()) {
-        std::cout << "Checking... No instances of the program ";
-        std::cout << GREEN << name << RESET;
-        std::cout << " left to stop." << std::endl;
+        std::cout << "Checking... No instances of " << GREEN << name << RESET << " left to stop." << std::endl;
         return true;
     }
     return false;
@@ -263,9 +260,7 @@ void Process::cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase) {
 }
 
 void Process::notifyAllStopped() const {
-    std::cout << "All instances of the program ";
-    std::cout << GREEN << name << RESET;
-    std::cout << " have been successfully stopped." << std::endl;
+    std::cout << "All instances of " << GREEN << name << RESET << " have been successfully stopped." << std::endl;
 }
 
 // ___________________ CHECK LIFECYCLE ___________________

@@ -67,8 +67,7 @@ void TaskMaster::initializeProcesses() const {
 
 void TaskMaster::startInitialProcesses() {
     for (auto& [name, process] : processes) {
-        // TODO: should be autoStart
-        if (process.getStartTime() == 1) {
+        if (process.getAutoStart() == true) {
             try {
                 startProcess(name);
             } catch (const std::exception& ex) {
@@ -83,6 +82,7 @@ void TaskMaster::startInitialProcesses() {
 Process* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);
     return it != processes.end() ? &it->second : nullptr;
+    // TODO: how to manage if process not found
 }
 
 // ___________________ COMMAND HANDLING ___________________
@@ -127,32 +127,32 @@ void TaskMaster::handleCommand(const std::string &command) {
     }
 }
 
-
-
-void TaskMaster::startProcess(const std::string& processName) {
-    Process* process = findProcess(processName);
+void TaskMaster::startProcess(const std::string &processName) {
+    Process *process = findProcess(processName);
     if (process != nullptr) {
-         try {
+        int attempts = 0;
+        const int maxAttempts = process->getRestartAttempts();
+        do {
+            try {
                 process->start();
-                // TODO: should use starttime
-                usleep(1000000);
+                usleep(process->getStartTime() * 1000000);
                 if (process->isRunning()) {
-                    std::cout << "All instances configured for the program ";
-                    std::cout << GREEN << processName << RESET;
-                    std::cout << " have started successfully." << std::endl;
-                } else {
-                    // TODO: Add logic for number of restarts from config
-                    std::cout << "One or more instances configured for the program ";
-                    std::cout << RED << processName << RESET;
-                    std::cout << " failed to start correctly. The program will be stopped. Please check the logs for details." << std::endl;
-                    process->stop();
+                    std::cout << "All instances configured for " << GREEN << processName << RESET <<
+                            " started successfully." << std::endl;
+                    break;
                 }
-            } catch (const std::exception& ex) {
+                std::cerr << "Attempt " << attempts + 1 << " failed to start " << RED << processName << RESET << std::endl;
+            } catch (const std::exception &ex) {
                 std::cerr << "Error starting program " << processName << ": " << ex.what() << std::endl;
-                // todo display message for user
                 process->stop();
-                exit(1); 
             }
+            if (attempts == maxAttempts) {
+                std::cerr << "Maximum restart attempts reached for " << RED << processName << RESET << std::endl;
+                process->stop();
+                break;
+            }
+            attempts++;
+        } while (attempts <= maxAttempts);
     }
 }
 

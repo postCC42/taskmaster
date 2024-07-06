@@ -20,7 +20,7 @@
             ]
         },
         "system_monitor": {
-            "command": "/usr/bin/top -b",
+            "command": "/usr/bin/top11 -b",
             "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",
