@@ -71,11 +71,12 @@ class Process {
         void parseConfig(const json& config);
         void setUpEnvironment();
 
-        // TODO: should be static
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},
             {"SIGINT", SIGINT},
-            // TODO: add more signals
+            {"SIGKILL", SIGKILL},
+            {"SIGSTOP", SIGSTOP},
+            {"SIGCONT", SIGCONT},
         };
 };
 
