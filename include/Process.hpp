@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <thread>
 #include "colors.hpp"
+#include "Logger.hpp"
+#include "Utils.hpp"
 
 using json = nlohmann::json;
 

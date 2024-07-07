@@ -3,13 +3,15 @@ SRC_DIR := src
 INCLUDE_DIR := include
 BUILD_DIR := build
 
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
-DEPS := $(OBJS:.o=.d)
+SRC_FILES := main.cpp Command.cpp ConfigParser.cpp Logger.cpp Process.cpp TaskMaster.cpp Utils.cpp
+SRCS := $(addprefix $(SRC_DIR)/,$(SRC_FILES))
+OBJS := $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.o)
+DEPS := $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.d)
 CXX_DEFS := NAME=\"$(NAME)\"
 
 CXX := g++
 CXX_FLAGS := -Wextra -Werror -Wall -std=c++17 -O2 -g3
+CXX_LINKS := -L$(LIB_DIR)
 CXX_LIBS :=
 
 CXX_HEADERS := -I$(INCLUDE_DIR)
@@ -26,7 +28,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) $(CXX_DEPS_FLAGS) $(CXX_DEFS_FLAGS) $(CXX_HEADERS) -c $< -o $@
 
-include $(wildcard $(DEPS))
+-include $(DEPS)
 
 clean:
 	@rm -rf $(BUILD_DIR)

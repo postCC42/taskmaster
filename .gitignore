@@ -3,3 +3,4 @@ build/
 .idea/
 .vscode/
 taskmaster
+taskmaster.log

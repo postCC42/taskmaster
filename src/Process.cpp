@@ -41,7 +41,6 @@ ____ Process Management Class ____
 */
 
 #include "Process.hpp"
-#include "Utils.hpp"
 
 
 // ___________________ INIT AND PARSE ___________________
@@ -216,7 +215,7 @@ void Process::stop() {
 
 bool Process::checkNoInstancesLeft() const {
     if (child_pids.empty()) {
-        std::cout << "Checking... No instances of " << GREEN << name << RESET << " left to stop." << std::endl;
+        Logger::getInstance().log("Checking... No instances of " + name + " left to stop.");
         return true;
     }
     return false;
@@ -268,7 +267,7 @@ void Process::cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase) {
 }
 
 void Process::notifyAllStopped() const {
-    std::cout << "All instances of " << GREEN << name << RESET << " have been successfully stopped." << std::endl;
+    Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
 // ___________________ CHECK LIFECYCLE ___________________

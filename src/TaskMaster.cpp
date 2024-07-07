@@ -32,37 +32,41 @@ ____ TaskMaster Class ____
 */
 
 #include "TaskMaster.hpp"
-#include "Utils.hpp"
 
 std::map<std::string, Process> TaskMaster::processes;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
-    std::cout << "TaskMaster created with config file path: " << configFilePath << std::endl;
+    // TODO: move to function
+    json config = configParser.getConfig();
+    loggingEnabled = config.at("logging_enabled").get<bool>();
+    logFilePath = config.at("log_file").get<std::string>();
+    Logger::getInstance().initialize(loggingEnabled, logFilePath);
+    Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
+
     displayUsage();
-    initializeProcesses();
+    initializeProcesses(config);
     commandLoop();
 }
 
 TaskMaster::~TaskMaster() {
     stopAllProcesses();
+    // TODO: clean the file descriptors for logging
 }
 
 
-void TaskMaster::initializeProcesses() const {
-    json config = configParser.getConfig();
-
+void TaskMaster::initializeProcesses(const json& config) {
     try {
         for (const auto& item : config.at("programs").items()) {
             processes.emplace(item.key(), Process(item.key(), item.value()));
-            std::cout << "Process " << item.key() << " initialized" << std::endl;
+            Logger::getInstance().log("Process " + item.key() + " initialized");
         }
 
         startInitialProcesses();
         signal(SIGINT, Utils::signalHandler);
         signal(SIGQUIT, Utils::signalHandler);
     } catch (const std::exception& ex) {
-        std::cerr << "Error: " << ex.what() << std::endl;
+        Logger::getInstance().logError("Error initializing processes: " + std::string(ex.what()));
         exit(EXIT_FAILURE);
     }
 }
@@ -73,7 +77,7 @@ void TaskMaster::startInitialProcesses() {
             try {
                 startProcess(name);
             } catch (const std::exception& ex) {
-                std::cerr << "Error starting program " << name << ": " << ex.what() << std::endl;
+                Logger::getInstance().logError("Error starting program " + name + ": " + ex.what());
                 process.stop();
                 exit(1); 
             }
@@ -114,25 +118,25 @@ void TaskMaster::handleCommand(const std::string &command) {
             if (words.size() > 1) {
                 startProcess(words[1]);
             } else {
-                std::cout << "Invalid command format. Usage: start <process_name>" << std::endl;
+                Logger::getInstance().logError("Invalid command format. Usage: start <process_name>");
             }
             break;
         case Command::Stop:
             if (words.size() > 1) {
                 stopProcess(words[1]);
             } else {
-                std::cout << "Invalid command format. Usage: stop <process_name>" << std::endl;
+                Logger::getInstance().logError("Invalid command format. Usage: stop <process_name>");
             }
             break;
         case Command::Restart:
             if (words.size() > 1) {
                 restartProcess(words[1]);
             } else {
-                std::cout << "Invalid command format. Usage: restart <process_name>" << std::endl;
+                Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
             }
             break;
         default:
-            std::cout << "Unknown command: " << command << std::endl;
+            Logger::getInstance().logError("Unknown command: " + command);
             break;
     }
 }
@@ -147,17 +151,16 @@ void TaskMaster::startProcess(const std::string &processName) {
                 process->start();
                 usleep(process->getStartTime() * 1000000);
                 if (process->isRunning()) {
-                    std::cout << "All instances configured for " << GREEN << processName << RESET <<
-                            " started successfully." << std::endl;
+                    Logger::getInstance().log("Process " + processName + " started successfully");
                     break;
                 }
-                std::cerr << "Attempt " << attempts + 1 << " failed to start " << RED << processName << RESET << std::endl;
+                Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + processName);
             } catch (const std::exception &ex) {
-                std::cerr << "Error starting program " << processName << ": " << ex.what() << std::endl;
+                Logger::getInstance().logError("Error starting program " + processName + ": " + ex.what());
                 process->stop();
             }
             if (attempts == maxAttempts) {
-                std::cerr << "Maximum restart attempts reached for " << RED << processName << RESET << std::endl;
+                Logger::getInstance().logError("Maximum restart attempts reached for " + processName);
                 process->stop();
                 break;
             }
@@ -177,7 +180,7 @@ void TaskMaster::stopProcess(const std::string& processName) {
 void TaskMaster::restartProcess(const std::string &processName) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
-        std::cout << "Restarting " << GREEN << processName << RESET << std::endl;
+        Logger::getInstance().log("Restarting " + processName);
         process->stop();
         startProcess(processName);
     }
@@ -191,34 +194,21 @@ void TaskMaster::stopAllProcesses() {
 
 void TaskMaster::displayStatus() {
     for (const auto& [name, process] : processes) {
-        if (process.isRunning()){
-            std::cout << GREEN << process.getName() << RESET;
-        } else {
-            std::cout << RED << process.getName() << RESET;
-        }
-        std::cout << ": " << process.getStatus() << std::endl;
+        Logger::getInstance().log("Process " + name + ": " + process.getStatus());
     }
 }
 
-// ___________________ USAGE ___________________
-
 void TaskMaster::displayUsage() {
-    std::cout << "Usage:" << std::endl;
-    std::cout << std::endl;
-    std::cout << "Commands already implemented:" << std::endl;
-    std::cout << YELLOW << "start <program_name>: " << RESET; 
-    std::cout << "Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)" << std::endl;
-    std::cout << YELLOW <<  "stop <program_name>:" << RESET;
-    std::cout << "Stop a running program by name." << std::endl;
-    std::cout << YELLOW <<  "status: " << RESET;
-    std::cout << "Show the status of all programs." << std::endl;
-    std::cout << YELLOW <<  "exit: " << RESET;
-    std::cout << "Exit the taskmaster." << std::endl;
-    std::cout << std::endl;
-    std::cout << "Commands to be implemented:" << std::endl;
-    std::cout << YELLOW << "restart <program_name>: "<< RESET;
-    std::cout << "Restart a program by name." << std::endl;
-    std::cout << YELLOW << "reload <program_name>: " << RESET;
-    std::cout << "Reload the configuration of a program without stopping it." << std::endl;
-    std::cout << std::endl;
+    Logger::getInstance().log("Usage:");
+    Logger::getInstance().log("");
+    Logger::getInstance().log("Commands:");
+    Logger::getInstance().log("start <program_name>: Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)");
+    Logger::getInstance().log("stop <program_name>: Stop a running program by name.");
+    Logger::getInstance().log("restart <program_name>: Restart a program by name.");
+    Logger::getInstance().log("status: Show the status of all programs.");
+    Logger::getInstance().log("exit: Exit the taskmaster.");
+    Logger::getInstance().log("");
+    Logger::getInstance().log("Commands to be implemented:");
+    Logger::getInstance().log("reload <program_name>: Reload the configuration of a program without stopping it.");
+    Logger::getInstance().log("");
 }

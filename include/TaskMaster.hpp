@@ -10,16 +10,19 @@
 #include "Utils.hpp"
 #include "colors.hpp"
 
+class Process;
+
 class TaskMaster {
 	public:
 		explicit TaskMaster(const std::string& configFilePath);
 		~TaskMaster();
-		void initializeProcesses() const;
 		static void stopAllProcesses();
 
 	private:
 		std::string configFilePath;
 		ConfigParser configParser;
+		bool loggingEnabled;
+		std::string logFilePath;
 		static std::map<std::string, Process> processes;
 
 		const std::string statusCmd = "status";
@@ -27,6 +30,7 @@ class TaskMaster {
     	const std::string stopCmd = "stop";
     	const std::string restartCmd = "restart";
 
+		static void initializeProcesses(const json& config);
 		static void startInitialProcesses();
 		static void commandLoop();
 		static void handleCommand(const std::string& command);

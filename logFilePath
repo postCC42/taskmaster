@@ -1,0 +1,19 @@
+Usage:
+
+Commands already implemented:
+[1;33mstart <program_name>: [0mStart a program by name. (For programs with start_time = 0, not started at taskmaster launch)
+[1;33mstop <program_name>:[0mStop a running program by name.
+[1;33mstatus: [0mShow the status of all programs.
+[1;33mexit: [0mExit the taskmaster.
+
+Commands to be implemented:
+[1;33mrestart <program_name>: [0mRestart a program by name.
+[1;33mreload <program_name>: [0mReload the configuration of a program without stopping it.
+
+Process top initialized
+Process web_server initialized
+All instances configured for [1;32mtop[0m started successfully.
+taskmaster> 
+signal 2 received. Stopping all processes...
+All instances of [1;32mtop[0m have been successfully stopped.
+Checking... No instances of [1;32mweb_server[0m left to stop.
