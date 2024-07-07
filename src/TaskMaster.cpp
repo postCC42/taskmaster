@@ -37,11 +37,8 @@ std::map<std::string, Process> TaskMaster::processes;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
-    // TODO: move to function
     json config = configParser.getConfig();
-    loggingEnabled = config.at("logging_enabled").get<bool>();
-    logFilePath = config.at("log_file").get<std::string>();
-    Logger::getInstance().initialize(loggingEnabled, logFilePath);
+    initializeLogger(config);
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
 
     displayUsage();
@@ -53,6 +50,13 @@ TaskMaster::~TaskMaster() {
     stopAllProcesses();
     Logger::getInstance().log("TaskMaster shutting down...");
 }
+
+void TaskMaster::initializeLogger(const json& config) {
+    const bool loggingEnabled = config.at("logging_enabled").get<bool>();
+    const std::string logFilePath = config.at("log_file").get<std::string>();
+    Logger::getInstance().initialize(loggingEnabled, logFilePath);
+}
+
 
 
 void TaskMaster::initializeProcesses(const json& config) {
@@ -87,14 +91,17 @@ void TaskMaster::startInitialProcesses() {
 
 Process* TaskMaster::findProcess(const std::string& processName) {
     auto it = processes.find(processName);
-    return it != processes.end() ? &it->second : nullptr;
-    // TODO: how to manage if process not found
+    if (it == processes.end()) {
+        Logger::getInstance().logError("Process " + processName + " not found");
+        return nullptr;
+    }
+    return &it->second;
 }
 
 // ___________________ COMMAND HANDLING ___________________
 void TaskMaster::commandLoop() {
     std::string command;
-    while (std::cout << "taskmaster> " && std::getline(std::cin, command) && command != "exit") {
+    while (std::cout << GREEN << "taskmaster> " << RESET && std::getline(std::cin, command) && command != "exit") {
         if (std::cin.eof()) {
             break;
         }
@@ -103,11 +110,10 @@ void TaskMaster::commandLoop() {
 }
 
 void TaskMaster::handleCommand(const std::string &command) {
+    Logger::getInstance().logToFile("> " + command);
     const std::vector<std::string> words = Utils::split(command, ' ');
 
     if (words.empty()) return;
-
-    // TODO: should we manage restart prog1 prog2 ?
 
     Command cmd = stringToCommand(words[0]);
     switch (cmd) {

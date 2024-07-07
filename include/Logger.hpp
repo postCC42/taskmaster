@@ -12,10 +12,10 @@ class Logger {
 
         void log(const std::string& message);
         void logError(const std::string& message);
+        void logToFile(const std::string& message);
 
     private:
         static Logger* instance;
-        bool logToFile = false;
         std::ofstream logFile;
 };
 

@@ -30,6 +30,7 @@ class TaskMaster {
     	const std::string stopCmd = "stop";
     	const std::string restartCmd = "restart";
 
+		static void initializeLogger(const json& config);
 		static void initializeProcesses(const json& config);
 		static void startInitialProcesses();
 		static void commandLoop();

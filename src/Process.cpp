@@ -86,7 +86,6 @@ void Process::parseConfig(const json& config) {
 
 void Process::setUpEnvironment() {
     for (const auto& [key, value] : environmentVariables) {
-        // TODO: can we use execvp instead of setenv?
         setenv(key.c_str(), value.c_str(), 1);
     }
 }

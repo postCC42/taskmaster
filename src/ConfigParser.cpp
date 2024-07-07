@@ -11,8 +11,6 @@ void ConfigParser::parseConfig(const std::string& configFilePath) {
     }
 
     configFile >> config;
-
-    // TODO: create a check config function
 }
 
 json ConfigParser::getConfig() const {
