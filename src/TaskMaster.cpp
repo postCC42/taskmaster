@@ -51,7 +51,7 @@ TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(confi
 
 TaskMaster::~TaskMaster() {
     stopAllProcesses();
-    // TODO: clean the file descriptors for logging
+    Logger::getInstance().log("TaskMaster shutting down...");
 }
 
 
@@ -144,6 +144,7 @@ void TaskMaster::handleCommand(const std::string &command) {
 void TaskMaster::startProcess(const std::string &processName) {
     Process *process = findProcess(processName);
     if (process != nullptr) {
+        Logger::getInstance().log("Starting " + processName);
         int attempts = 0;
         const int maxAttempts = process->getRestartAttempts();
         do {
@@ -173,6 +174,7 @@ void TaskMaster::startProcess(const std::string &processName) {
 void TaskMaster::stopProcess(const std::string& processName) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
+        Logger::getInstance().log("Stopping " + processName);
         process->stop();
     }
 }

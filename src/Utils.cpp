@@ -14,5 +14,6 @@ std::vector<std::string> Utils::split(const std::string &s, const char delimiter
 void Utils::signalHandler(int sig) {
     Logger::getInstance().log("\nsignal " + std::to_string(sig) + " received. Stopping all processes...");
     TaskMaster::stopAllProcesses();
+    Logger::getInstance().log("TaskMaster shutting down...");
     exit(sig);
 }
