@@ -238,8 +238,8 @@ void Process::reloadConfig(const json& newConfig) {
         applyChanges(changes);
         if (changesRequireRestart(changes)) {
             Logger::getInstance().log("Some changes require a restart for process: " + name);
-            stop();
-            start();
+            // stop();
+            // start();
         } else {
             sendSighup();
         }
@@ -374,6 +374,34 @@ void Process::monitorChildProcesses() {
 }
 
 
+// void Process::handleChildExit(pid_t pid, int status) {
+//     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
+//     if (it != child_pids.end()) {
+//         child_pids.erase(it);
+//         // int exitStatus;
+//         if (WIFEXITED(status)) {
+//             // exitStatus = WEXITSTATUS(status);
+//             Logger::getInstance().log("Child process " + std::to_string(pid) + " exited with status " + std::to_string(WEXITSTATUS(status)));
+//         } else if (WIFSIGNALED(status)) {
+//             // exitStatus = WTERMSIG(status);
+//             Logger::getInstance().logError("Child process " + std::to_string(pid) + " terminated by signal " + std::to_string(WTERMSIG(status)));
+//         } else {
+//             // exitStatus = -1;
+//             Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
+//         }
+
+//         // if (autoRestart == "always") {
+//         //     Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
+//         //     this->start();
+//         // } else if (autoRestart == "unexpected" && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
+//         //     Logger::getInstance().logError(
+//         //         "Child process " + std::to_string(pid) + " exited with unexpected status " +
+//         //         std::to_string(exitStatus) + ". Considering restart.");
+//         //     this->start();
+//         // }
+//     }
+// }
+
 void Process::handleChildExit(pid_t pid, int status) {
     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
     if (it != child_pids.end()) {
@@ -390,6 +418,8 @@ void Process::handleChildExit(pid_t pid, int status) {
             Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
         }
 
+        Logger::getInstance().log("Expected exit codes: " + vectorToString(expectedExitCodes));
+
         if (autoRestart == "always") {
             Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
             this->start();
@@ -402,6 +432,20 @@ void Process::handleChildExit(pid_t pid, int status) {
             }
         }
     }
+}
+
+// todo remove vectorToString after testing ok
+std::string Process::vectorToString(const std::vector<int>& vec) const {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        ss << vec[i];
+        if (i < vec.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "]";
+    return ss.str();
 }
 
 // ___________________ STOP AND SYNCH ___________________

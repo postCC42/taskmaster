@@ -9,7 +9,7 @@
             "stop_time": 5,
             "restart_attempts": 3,
             "stop_signal": "SIGTERM",
-            "expected_exit_codes": [0],
+            "expected_exit_codes": [15],
             "working_directory": "./script/",
             "umask": -1,
             "stdout_log": "/tmp/web_server_output.log",

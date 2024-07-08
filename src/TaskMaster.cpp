@@ -220,27 +220,6 @@ void TaskMaster::reloadProcess(const std::string& processName, ConfigParser& con
     }
 }
 
-// void TaskMaster::reloadProcess(const std::string& processName, ConfigParser& configParser) {
-//     Process* process = findProcess(processName);
-//     if (process != nullptr) {
-//         // Reload the configuration file
-//         json newConfig = configParser.getConfig();
-
-//         // Find the specific configuration for the process
-//         auto processConfigIt = newConfig.at("programs").find(processName);
-//         if (processConfigIt != newConfig.at("programs").end()) {
-//             // Send SIGHUP signal to the process
-//             if (kill(process->getPid(), SIGHUP) != 0) {
-//                 Logger::getInstance().logError("Error sending SIGHUP to process " + processName + ": " + std::strerror(errno));
-//             }
-//         } else {
-//             Logger::getInstance().log("Process configuration not found: " + processName);
-//         }
-//     } else {
-//         Logger::getInstance().log("Process not found: " + processName);
-//     }
-// }
-
 void TaskMaster::stopAllProcesses() {
     for (auto& [_, process] : processes) {
         process.stop();
