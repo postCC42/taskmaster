@@ -69,6 +69,7 @@ void TaskMaster::initializeProcesses(const json& config) {
         startInitialProcesses();
         signal(SIGINT, Utils::signalHandler);
         signal(SIGQUIT, Utils::signalHandler);
+        signal(SIGHUP, Utils::signalHandler);
     } catch (const std::exception& ex) {
         Logger::getInstance().logError("Error initializing processes: " + std::string(ex.what()));
         exit(EXIT_FAILURE);
@@ -143,7 +144,7 @@ void TaskMaster::handleCommand(const std::string &command, std::string configFil
             break;
         case Command::Reload:
             if (words.size() > 1) {
-                reloadProcess(words[1], configFilePath);
+                reloadProcess(configFilePath);
             } else {
                 Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
             }
@@ -201,26 +202,38 @@ void TaskMaster::restartProcess(const std::string &processName) {
     }
 }
 
-void TaskMaster::reloadProcess(const std::string& processName, std::string configFilePath) {
-    Process* process = findProcess(processName);
-    if (process != nullptr) {
-         // Create a new ConfigParser instance to reload the configuration file
-        ConfigParser newConfigParser(configFilePath);
-        json newConfig = newConfigParser.getConfig();
+void TaskMaster::reloadConfig(std::string configFilePath) {
+    Logger::getInstance().log("Reloading configuration from " + configFilePath);
+    ConfigParser newConfigParser(configFilePath);
+    json newConfig = newConfigParser.getConfig();
 
-        // Log the new configuration
-        // Logger::getInstance().log("New configuration for " + processName + ": " + newConfig.dump(4));
+    std::set<std::string> updatedProcesses;
 
-        // Find the specific configuration for the process
-        auto processConfigIt = newConfig.at("programs").find(processName);
-        if (processConfigIt != newConfig.at("programs").end()) {
-            // Directly call the reload function on the process
-            process->reloadConfig(processConfigIt.value());
+    // Update existing processes and add new ones
+    for (const auto& item : newConfig.at("programs").items()) {
+        auto it = processes.find(item.key());
+        if (it != processes.end()) {
+            it->second.reloadConfig(item.value());
+            Logger::getInstance().log("Process " + item.key() + " reloaded");
         } else {
-            Logger::getInstance().log("Process configuration not found: " + processName);
+            processes.emplace(item.key(), Process(item.key(), item.value()));
+            Logger::getInstance().log("New process " + item.key() + " added and initialized");
+            if (processes.at(item.key()).getAutoStart()) {
+                startProcess(item.key());
+            }
         }
-    } else {
-        Logger::getInstance().log("Process not found: " + processName);
+        updatedProcesses.insert(item.key());
+    }
+
+    // Remove processes that are no longer in the new configuration
+    for (auto it = processes.begin(); it != processes.end();) {
+        if (updatedProcesses.find(it->first) == updatedProcesses.end()) {
+            it->second.stop();
+            Logger::getInstance().log("Process " + it->first + " removed");
+            it = processes.erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 
@@ -247,6 +260,6 @@ void TaskMaster::displayUsage() {
     Logger::getInstance().log("exit: Exit the taskmaster.");
     Logger::getInstance().log("");
     Logger::getInstance().log("Commands to be implemented:");
-    Logger::getInstance().log("reload <program_name>: Reload the configuration of a program without stopping it.");
+    Logger::getInstance().log("reload: Reload the configuration without stopping the program.");
     Logger::getInstance().log("");
 }

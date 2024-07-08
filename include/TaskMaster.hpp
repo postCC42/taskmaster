@@ -39,7 +39,7 @@ class TaskMaster {
 		static void startProcess(const std::string& processName);
 		static void stopProcess(const std::string& processName);
 		static void restartProcess(const std::string& processName);
-		static void reloadProcess(const std::string& processName, std::string configFilePath);
+		static void reloadProcess(std::string configFilePath);
 		static void displayStatus();
 		static void displayUsage();
 		static Process* findProcess(const std::string& processName);
