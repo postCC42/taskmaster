@@ -12,8 +12,8 @@
             "expected_exit_codes": [0],
             "working_directory": "/tmp/",
             "umask": -1,
-            "stdout_log": "/tmp/ggg_system_monitor_output.log",
-            "stderr_log": "/tmp/ccc_system_monitor_error.log",
+            "stdout_log": "/tmp/system_monitor_output.log",
+            "stderr_log": "/tmp/system_monitor_error.log",
             "environment_variables": []
         },
         "web_server": {
@@ -31,8 +31,8 @@
             "stdout_log": "/tmp/web_server_output.log",
             "stderr_log": "/tmp/web_server_error.log",
             "environment_variables": [
-                "GREETING=Hello evaluator, good luck!",
-                "AUTHORS=Clem and Mathia"
+                "GREETING=Hello you, good luck!",
+                "AUTHORS=Alfa et Omega"
             ]
         }
     },

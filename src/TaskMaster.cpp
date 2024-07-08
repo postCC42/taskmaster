@@ -34,16 +34,19 @@ ____ TaskMaster Class ____
 #include "TaskMaster.hpp"
 
 std::map<std::string, Process> TaskMaster::processes;
+std::string g_configFilePath;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
 TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
+    g_configFilePath = configFilePath;
+
     json config = configParser.getConfig();
     initializeLogger(config);
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
 
     displayUsage();
     initializeProcesses(config);
-    commandLoop(configFilePath);
+    commandLoop();
 }
 
 TaskMaster::~TaskMaster() {
@@ -100,17 +103,17 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 }
 
 // ___________________ COMMAND HANDLING ___________________
-void TaskMaster::commandLoop(std::string configFilePath) {
+void TaskMaster::commandLoop() {
     std::string command;
     while (std::cout << GREEN << "taskmaster> " << RESET && std::getline(std::cin, command) && command != "exit") {
         if (std::cin.eof()) {
             break;
         }
-        handleCommand(command, configFilePath);
+        handleCommand(command);
     }
 }
 
-void TaskMaster::handleCommand(const std::string &command, std::string configFilePath) {
+void TaskMaster::handleCommand(const std::string &command) {
     Logger::getInstance().logToFile("> " + command);
     const std::vector<std::string> words = Utils::split(command, ' ');
 
@@ -144,15 +147,19 @@ void TaskMaster::handleCommand(const std::string &command, std::string configFil
             break;
         case Command::Reload:
             if (words.size() > 1) {
-                reloadProcess(configFilePath);
+                Logger::getInstance().logError("Invalid command format. Usage: reload");
             } else {
-                Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
+                sendSighupSignalToReload();
             }
             break;
         default:
             Logger::getInstance().logError("Unknown command: " + command);
             break;
     }
+}
+
+void TaskMaster::sendSighupSignalToReload() {
+    kill(getpid(), SIGHUP);
 }
 
 void TaskMaster::startProcess(const std::string &processName) {
@@ -202,9 +209,8 @@ void TaskMaster::restartProcess(const std::string &processName) {
     }
 }
 
-void TaskMaster::reloadConfig(std::string configFilePath) {
-    Logger::getInstance().log("Reloading configuration from " + configFilePath);
-    ConfigParser newConfigParser(configFilePath);
+void TaskMaster::reloadConfig() {
+    ConfigParser newConfigParser(g_configFilePath);
     json newConfig = newConfigParser.getConfig();
 
     std::set<std::string> updatedProcesses;
@@ -213,13 +219,37 @@ void TaskMaster::reloadConfig(std::string configFilePath) {
     for (const auto& item : newConfig.at("programs").items()) {
         auto it = processes.find(item.key());
         if (it != processes.end()) {
+            // Process already exists
             it->second.reloadConfig(item.value());
             Logger::getInstance().log("Process " + item.key() + " reloaded");
+
+            // Check if instances need to be adjusted
+            int currentInstances = it->second.getNumberOfInstances();
+            int newInstances = item.value().at("instances").get<int>();
+
+            if (newInstances > currentInstances) {
+                // Start additional instances
+                int instancesToStart = newInstances - currentInstances;
+                for (int i = 0; i < instancesToStart; ++i) {
+                    // startProcess(item.key());
+                    it->second.start();
+                }
+            } else if (newInstances < currentInstances) {
+                // Stop excess instances
+                int instancesToStop = currentInstances - newInstances;
+                for (int i = 0; i < instancesToStop; ++i) {
+                    it->second.stopInstance();
+                }
+            }
+
         } else {
+            // New process
             processes.emplace(item.key(), Process(item.key(), item.value()));
             Logger::getInstance().log("New process " + item.key() + " added and initialized");
+
+            // Start if auto start is enabled
             if (processes.at(item.key()).getAutoStart()) {
-                startProcess(item.key());
+                processes.at(item.key()).start();
             }
         }
         updatedProcesses.insert(item.key());
@@ -228,6 +258,7 @@ void TaskMaster::reloadConfig(std::string configFilePath) {
     // Remove processes that are no longer in the new configuration
     for (auto it = processes.begin(); it != processes.end();) {
         if (updatedProcesses.find(it->first) == updatedProcesses.end()) {
+            // Stop all instances of the process before removing it
             it->second.stop();
             Logger::getInstance().log("Process " + it->first + " removed");
             it = processes.erase(it);
@@ -256,10 +287,8 @@ void TaskMaster::displayUsage() {
     Logger::getInstance().log("start <program_name>: Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)");
     Logger::getInstance().log("stop <program_name>: Stop a running program by name.");
     Logger::getInstance().log("restart <program_name>: Restart a program by name.");
+    Logger::getInstance().log("reload: Reload the configuration without stopping the program.");
     Logger::getInstance().log("status: Show the status of all programs.");
     Logger::getInstance().log("exit: Exit the taskmaster.");
-    Logger::getInstance().log("");
-    Logger::getInstance().log("Commands to be implemented:");
-    Logger::getInstance().log("reload: Reload the configuration without stopping the program.");
     Logger::getInstance().log("");
 }

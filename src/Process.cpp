@@ -128,23 +128,18 @@ ConfigChangesMap Process::detectChanges(const json& newConfig) {
     }
        std::string newStopSignal = newConfig.at("stop_signal").get<std::string>();
 
-    // Log the previous and new stop signals
-    Logger::getInstance().log("Previous stop signal: " + signalToString(stopSignal));
-    Logger::getInstance().log("New stop signal: " + newStopSignal);
-
-    // Check if the new stop signal is valid
     if (signalMap.find(newStopSignal) == signalMap.end()) {
         Logger::getInstance().log(name + ": Invalid stop signal: " + newStopSignal);
         throw std::runtime_error(name + ": Invalid stop signal: " + newStopSignal);
     }
 
-    // If the new stop signal is different from the current one, record the change
     if (signalMap.at(newStopSignal) != stopSignal) {
-        Logger::getInstance().log("Detected change in stop signal: " + newStopSignal);
         changes["stop_signal"] = newStopSignal;
     }
     if (newConfig.at("expected_exit_codes").get<std::vector<int>>() != expectedExitCodes) {
-        changes["expected_exit_codes"] = "changed";
+        expectedExitCodes.clear();
+        expectedExitCodes = newConfig.at("expected_exit_codes").get<std::vector<int>>();
+        changes["expected_exit_codes"] = serializeVector(expectedExitCodes);
     }
 
     if (newConfig.at("working_directory").get<std::string>() != workingDirectory) {
@@ -163,27 +158,35 @@ ConfigChangesMap Process::detectChanges(const json& newConfig) {
         changes["stderr_log"] = newConfig.at("stderr_log").get<std::string>();
     }
 
+    std::map<std::string, std::string> newEnvVars;
     for (const auto& envVar : newConfig.at("environment_variables")) {
         std::string envVarStr = envVar.get<std::string>();
         const auto delimiterPos = envVarStr.find('=');
         auto key = envVarStr.substr(0, delimiterPos);
         const auto value = envVarStr.substr(delimiterPos + 1);
-        if (environmentVariables[key] != value) {
-            changes["environment_variables"] = "changed";
-            break;
-        }
+        newEnvVars[key] = value;
+    }
+
+    if (newEnvVars != environmentVariables) {
+        changes["environment_variables"] = serializeEnvVars(newEnvVars);
     }
 
     return changes;
 }
 
-std::string Process::signalToString(int signal) {
-    for (const auto& entry : signalMap) {
-        if (entry.second == signal) {
-            return entry.first;
-        }
-    }
-    return "Unknown signal";
+std::string Process::serializeVector(const std::vector<int>& vec) {
+    json j = vec;
+    return j.dump();
+}
+
+std::string Process::serializeEnvVars(const std::map<std::string, std::string>& envVars) {
+    json j = envVars;
+    return j.dump();
+}
+
+std::map<std::string, std::string> Process::deserializeEnvVars(const std::string& str) {
+    json j = json::parse(str);
+    return j.get<std::map<std::string, std::string>>();
 }
 
 void Process::applyChanges(const ConfigChangesMap& changes) {
@@ -207,17 +210,8 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
             restartAttempts = std::stoi(value);
         } else if (key == "stop_signal") {
             stopSignal = signalMap.at(value);
-        } else if (key == "expected_exit_codes") {
-            // Assuming expected_exit_codes are provided as a JSON array of integers
-            try {
-                expectedExitCodes.clear();
-                json exitCodesJson = json::parse(value);
-                for (const auto& code : exitCodesJson) {
-                    expectedExitCodes.push_back(code.get<int>());
-                }
-            } catch (const std::exception& e) {
-                throw std::runtime_error(name + ": Error parsing expected_exit_codes: " + std::string(e.what()));
-            }
+        } else if (key == "expected_exit_codes") {   
+            // Handle expected_exit_codes if needed
         } else if (key == "working_directory") {
             workingDirectory = value;
         } else if (key == "umask") {
@@ -227,22 +221,11 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "stderr_log") {
             stderrLog = value;
         } else if (key == "environment_variables") {
-            environmentVariables.clear();
-            try {
-                json envVarsJson = json::parse(value);
-                for (const auto& envVar : envVarsJson) {
-                    std::string envVarStr = envVar.get<std::string>();
-                    const auto delimiterPos = envVarStr.find('=');
-                    auto key = envVarStr.substr(0, delimiterPos);
-                    const auto val = envVarStr.substr(delimiterPos + 1);
-                    environmentVariables[key] = val;
-                }
-            } catch (const std::exception& e) {
-                throw std::runtime_error(name + ": Error parsing environment_variables: " + std::string(e.what()));
-            }
+            environmentVariables = deserializeEnvVars(value);
         }
     }
 }
+
 
 
 void Process::reloadConfig(const json& newConfig) {
@@ -262,22 +245,20 @@ void Process::reloadConfig(const json& newConfig) {
             stop();
             start();
         } else {
-            // sendSighup();
             updateDinamicallyWithoutRestarting(changes);
         }
     } else {
-        Logger::getInstance().log("No changes detected " + name);
+        Logger::getInstance().log("No changes detected for " + name);
     }
 }
 
 bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
-    static const std::vector<std::string> restartKeys = {"command", "instances", "auto_start",  "working_directory"};
+    static const std::vector<std::string> restartKeys = {"command", "auto_start", "auto_restart", "working_directory", "stdout_log", "stderr_log", "environment_variables", "start_time", "stop_time", "restart_attempts"};
 
     bool requiresRestart = false;
 
     for (const auto& key : restartKeys) {
         if (changes.find(key) != changes.end()) {
-            Logger::getInstance().log("Detected change in key: " + key);
             requiresRestart = true;
         }
     }
@@ -287,66 +268,16 @@ bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
 
 void Process::updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes) {
     for (const auto& change : changes) {
-        if (change.first == "stdout_log") {
-            updateStdoutLog();
-        } else if (change.first == "stderr_log") {
-            updateStderrLog();
-        } else if (change.first == "umask") {
+        if (change.first == "umask") {
             updateUmask(change.second);
         }
     }
-
-    Logger::getInstance().log("Dinamically updated configuration successfully.");
-}
-
-void Process::updateStdoutLog() {
-    std::cout << "Updating stdout_log to: " << stdoutLog << std::endl;
-    fflush(stdout);
-    fclose(stdout);
-    
-    FILE* new_stdout = freopen(stdoutLog.c_str(), "a", stdout);
-    if (new_stdout == nullptr) {
-        perror("Failed to redirect stdout");
-        _exit(EXIT_FAILURE);
-    } else {
-        stdout = new_stdout;
-    }
-     fflush(stdout);
-}
-
-void Process::updateStderrLog() {
-    fflush(stderr);
-    fflush(stderr);
-    std::cout << "Updating stderr_log to: " << stderrLog << std::endl;
-    FILE* new_stderr = freopen(stderrLog.c_str(), "a", stderr);
-    if (new_stderr == nullptr) {
-        perror("Failed to redirect stderr");
-        _exit(EXIT_FAILURE);
-    } else {
-        stderr = new_stderr;
-    }
-    fflush(stderr);
 }
 
 void Process::updateUmask(std::string newValue) {
     std::cout << "Updating umask to: " << newValue << std::endl;
     if (umaskInt != -1) {
         ::umask(umaskInt);
-    }
-}
-
-
-// void Process::sighupHandler(int sig) {
-//     Logger::getInstance().log("Received SIGHUP signal for process: " + name);
-// }
-
-void Process::sendSighup() {
-    Logger::getInstance().log("Sending SIGHUP signal to process: " + name);
-
-    for (const auto& pid : child_pids) {
-        if (kill(pid, SIGHUP) != 0) {
-            Logger::getInstance().logError("Error sending SIGHUP to PID " + std::to_string(pid) + ": " + std::strerror(errno));
-        }
     }
 }
 
@@ -400,7 +331,6 @@ int Process::getRunningChildCount() {
 }
 
 void Process::runChildProcess() const {
-    // signal(SIGHUP, sighupHandler);
     if (chdir(workingDirectory.c_str()) != 0) {
         perror("Failed to change directory");
         _exit(EXIT_FAILURE);
@@ -466,9 +396,6 @@ void Process::handleChildExit(pid_t pid, int status) {
             exitStatus = -1;
             Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
         }
-
-        Logger::getInstance().log("Expected exit codes: " + vectorToString(expectedExitCodes));
-
         if (autoRestart == "always" && !userStopped) {
             Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
             this->start();
@@ -481,20 +408,6 @@ void Process::handleChildExit(pid_t pid, int status) {
             }
         }
     }
-}
-
-// todo remove vectorToString after testing
-std::string Process::vectorToString(const std::vector<int>& vec) const {
-    std::stringstream ss;
-    ss << "[";
-    for (size_t i = 0; i < vec.size(); ++i) {
-        ss << vec[i];
-        if (i < vec.size() - 1) {
-            ss << ", ";
-        }
-    }
-    ss << "]";
-    return ss.str();
 }
 
 // ___________________ STOP AND SYNCH ___________________
@@ -548,6 +461,7 @@ bool Process::stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
     return false;
 }
 
+
 void Process::forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
     int status;
 
@@ -570,9 +484,30 @@ void Process::cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase) {
     child_pids.erase(std::remove_if(child_pids.begin(), child_pids.end(), shouldBeErased), child_pids.end());
 }
 
+void Process::stopInstance() {
+     if (!child_pids.empty()) {
+        pid_t lastPid = child_pids.back();
+        std::vector<pid_t> pidsToErase;
+
+        if (!stopProcess(lastPid, pidsToErase)) {
+            forceStopProcess(lastPid, pidsToErase);
+        }
+
+        cleanupStoppedProcesses(pidsToErase);
+
+        Logger::getInstance().log("Stopped and removed " + name + " process with PID: " + std::to_string(lastPid));
+    } else {
+        Logger::getInstance().log("No child processes to stop and remove.");
+    }
+}
+
 // ___________________ CHECK LIFECYCLE ___________________
 bool Process::isRunning() const {
-    return static_cast<int>(child_pids.size()) == instances;
+    return (getNumberOfInstances() == instances);
+}
+
+int Process::getNumberOfInstances() const {
+    return static_cast<int>(child_pids.size());
 }
 
 std::string Process::getStatus() const {

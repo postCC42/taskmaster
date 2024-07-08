@@ -9,6 +9,7 @@
 #include "Process.hpp"
 #include "Utils.hpp"
 #include "colors.hpp"
+#include <set>
 
 class Process;
 
@@ -17,6 +18,7 @@ class TaskMaster {
 		explicit TaskMaster(const std::string& configFilePath);
 		~TaskMaster();
 		static void stopAllProcesses();
+		static void reloadConfig();
 
 	private:
 		std::string configFilePath;
@@ -34,12 +36,12 @@ class TaskMaster {
 		static void initializeLogger(const json& config);
 		static void initializeProcesses(const json& config);
 		static void startInitialProcesses();
-		void commandLoop(std::string configFilePath);
-		void handleCommand(const std::string& command, std::string configFilePath);
+		void commandLoop();
+		void handleCommand(const std::string& command);
 		static void startProcess(const std::string& processName);
 		static void stopProcess(const std::string& processName);
 		static void restartProcess(const std::string& processName);
-		static void reloadProcess(std::string configFilePath);
+		static void sendSighupSignalToReload();
 		static void displayStatus();
 		static void displayUsage();
 		static Process* findProcess(const std::string& processName);

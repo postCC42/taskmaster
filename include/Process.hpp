@@ -38,7 +38,9 @@ class Process {
         [[nodiscard]] int getAutoStart() const { return autoStart; }
         [[nodiscard]] int getRestartAttempts() const { return restartAttempts; }
         [[nodiscard]] bool isRunning() const;
+        [[nodiscard]] int getNumberOfInstances() const; 
         void reloadConfig(const json& newConfig);
+        void stopInstance();
 
     private:
         std::string name;
@@ -74,17 +76,15 @@ class Process {
         static void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         void cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase);
 
+
         ConfigChangesMap detectChanges(const json& newConfig);
         void applyChanges(const ConfigChangesMap& changes);
         bool changesRequireRestart(const ConfigChangesMap& changes);
-        // void sighupHandler(int sig); 
-        void sendSighup();
-        std::string vectorToString(const std::vector<int>& vec) const;
-        std::string signalToString(int signal);
         void updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes);
-        void updateStdoutLog();
-        void updateStderrLog();
         void updateUmask(std::string newValue);
+        std::string serializeVector(const std::vector<int>& vec);
+        std::string serializeEnvVars(const std::map<std::string, std::string>& envVars);
+        std::map<std::string, std::string> deserializeEnvVars(const std::string& str);
 
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},
