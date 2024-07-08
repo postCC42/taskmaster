@@ -19,6 +19,8 @@
 #include "colors.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
+// #include <atomic> // thread safe
+
 
 using json = nlohmann::json;
 
@@ -56,7 +58,8 @@ class Process {
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
         std::vector<pid_t> child_pids;
         bool monitorThreadRunning = false;
-         json newConfigFile;
+        json newConfigFile;
+        bool userStopped;
         
 
         void parseConfig(const json& config);

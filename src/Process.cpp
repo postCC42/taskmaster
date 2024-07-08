@@ -238,8 +238,9 @@ void Process::reloadConfig(const json& newConfig) {
         applyChanges(changes);
         if (changesRequireRestart(changes)) {
             Logger::getInstance().log("Some changes require a restart for process: " + name);
-            // stop();
-            // start();
+            userStopped = true;
+            stop();
+            start();
         } else {
             sendSighup();
         }
@@ -409,7 +410,7 @@ void Process::handleChildExit(pid_t pid, int status) {
         int exitStatus;
         if (WIFEXITED(status)) {
             exitStatus = WEXITSTATUS(status);
-            Logger::getInstance().log("Child process " + std::to_string(pid) + " exited with status " + std::to_string(WEXITSTATUS(status)));
+            Logger::getInstance().log("Child process " + std::to_string(pid) + " exited with status " + std::to_string(exitStatus));
         } else if (WIFSIGNALED(status)) {
             exitStatus = WTERMSIG(status);
             Logger::getInstance().logError("Child process " + std::to_string(pid) + " terminated by signal " + std::to_string(WTERMSIG(status)));
@@ -420,11 +421,11 @@ void Process::handleChildExit(pid_t pid, int status) {
 
         Logger::getInstance().log("Expected exit codes: " + vectorToString(expectedExitCodes));
 
-        if (autoRestart == "always") {
+        if (autoRestart == "always" && !userStopped) {
             Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
             this->start();
         } else if (autoRestart == "unexpected") {
-            if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
+            if (!userStopped && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
                 Logger::getInstance().logError(
                     "Child process " + std::to_string(pid) + " exited with unexpected status " +
                     std::to_string(exitStatus) + ". Considering restart.");
@@ -434,7 +435,7 @@ void Process::handleChildExit(pid_t pid, int status) {
     }
 }
 
-// todo remove vectorToString after testing ok
+// todo remove vectorToString after testing
 std::string Process::vectorToString(const std::vector<int>& vec) const {
     std::stringstream ss;
     ss << "[";
@@ -454,6 +455,8 @@ void Process::stop() {
         return;
     }
 
+    userStopped = true;
+
     std::vector<pid_t> pidsToErase;
 
     while (!child_pids.empty()) {
@@ -470,7 +473,7 @@ void Process::stop() {
 
         cleanupStoppedProcesses(pidsToErase);
     }
-
+    userStopped = false; 
     Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
