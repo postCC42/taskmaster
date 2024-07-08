@@ -19,8 +19,12 @@
 #include "colors.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
+// #include <atomic> // thread safe
+
 
 using json = nlohmann::json;
+
+using ConfigChangesMap = std::unordered_map<std::string, std::string>;
 
 class Process {
 
@@ -34,6 +38,9 @@ class Process {
         [[nodiscard]] int getAutoStart() const { return autoStart; }
         [[nodiscard]] int getRestartAttempts() const { return restartAttempts; }
         [[nodiscard]] bool isRunning() const;
+        [[nodiscard]] int getNumberOfInstances() const; 
+        void reloadConfig(const json& newConfig);
+        void stopInstance();
 
     private:
         std::string name;
@@ -53,6 +60,9 @@ class Process {
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
         std::vector<pid_t> child_pids;
         bool monitorThreadRunning = false;
+        json newConfigFile;
+        bool userStopped;
+        
 
         void parseConfig(const json& config);
         void setUpEnvironment();
@@ -65,6 +75,16 @@ class Process {
         bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         static void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         void cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase);
+
+
+        ConfigChangesMap detectChanges(const json& newConfig);
+        void applyChanges(const ConfigChangesMap& changes);
+        bool changesRequireRestart(const ConfigChangesMap& changes);
+        void updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes);
+        void updateUmask(std::string newValue);
+        std::string serializeVector(const std::vector<int>& vec);
+        std::string serializeEnvVars(const std::map<std::string, std::string>& envVars);
+        std::map<std::string, std::string> deserializeEnvVars(const std::string& str);
 
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},

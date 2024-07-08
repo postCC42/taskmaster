@@ -8,6 +8,7 @@ enum class Command {
     Start,
     Stop,
     Restart,
+    Reload,
     Unknown
 };
 
