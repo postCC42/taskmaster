@@ -21,7 +21,7 @@
         },
         "top": {
             "command": "/usr/bin/top -b",
-            "instances": 3,
+            "instances": 2,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,

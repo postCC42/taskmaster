@@ -84,6 +84,195 @@ void Process::parseConfig(const json& config) {
     }
 }
 
+ConfigChangesMap Process::detectChanges(const json& newConfig) {
+    ConfigChangesMap changes;
+
+    if (newConfig.at("command").get<std::string>() != command) {
+        changes["command"] = newConfig.at("command").get<std::string>();
+    }
+
+    if (newConfig.at("instances").get<int>() != instances) {
+        int newInstances = newConfig.at("instances").get<int>();
+        if (newInstances < 0) throw std::runtime_error(name + ": Invalid number of instances: " + std::to_string(newInstances));
+        changes["instances"] = std::to_string(newInstances);
+    }
+
+    if (newConfig.at("auto_start").get<bool>() != autoStart) {
+        changes["auto_start"] = std::to_string(newConfig.at("auto_start").get<bool>());
+    }
+
+    if (newConfig.at("auto_restart").get<std::string>() != autoRestart) {
+        std::string newAutoRestart = newConfig.at("auto_restart").get<std::string>();
+        if (newAutoRestart != "always" && newAutoRestart != "never" && newAutoRestart != "unexpected") {
+            throw std::runtime_error(name + ": Invalid auto restart value: " + newAutoRestart);
+        }
+        changes["auto_restart"] = newAutoRestart;
+    }
+
+    if (newConfig.at("start_time").get<int>() != startTime) {
+        int newStartTime = newConfig.at("start_time").get<int>();
+        if (newStartTime < 0) throw std::runtime_error(name + ": Invalid start time: " + std::to_string(newStartTime));
+        changes["start_time"] = std::to_string(newStartTime);
+    }
+
+    if (newConfig.at("stop_time").get<int>() != stopTime) {
+        int newStopTime = newConfig.at("stop_time").get<int>();
+        if (newStopTime < 0) throw std::runtime_error(name + ": Invalid stop time: " + std::to_string(newStopTime));
+        changes["stop_time"] = std::to_string(newStopTime);
+    }
+
+    if (newConfig.at("restart_attempts").get<int>() != restartAttempts) {
+        int newRestartAttempts = newConfig.at("restart_attempts").get<int>();
+        if (newRestartAttempts < 0) throw std::runtime_error(name + ": Invalid restart attempts: " + std::to_string(newRestartAttempts));
+        changes["restart_attempts"] = std::to_string(newRestartAttempts);
+    }
+
+    std::string newStopSignal = newConfig.at("stop_signal").get<std::string>();
+    if (signalMap.find(newStopSignal) == signalMap.end()) {
+        throw std::runtime_error(name + ": Invalid stop signal: " + newStopSignal);
+    }
+    if (newStopSignal != std::to_string(stopSignal)) {
+        changes["stop_signal"] = newStopSignal;
+    }
+
+    if (newConfig.at("expected_exit_codes").get<std::vector<int>>() != expectedExitCodes) {
+        changes["expected_exit_codes"] = "changed";
+    }
+
+    if (newConfig.at("working_directory").get<std::string>() != workingDirectory) {
+        changes["working_directory"] = newConfig.at("working_directory").get<std::string>();
+    }
+
+    if (newConfig.at("umask").get<int>() != umaskInt) {
+        changes["umask"] = std::to_string(newConfig.at("umask").get<int>());
+    }
+
+    if (newConfig.at("stdout_log").get<std::string>() != stdoutLog) {
+        changes["stdout_log"] = newConfig.at("stdout_log").get<std::string>();
+    }
+
+    if (newConfig.at("stderr_log").get<std::string>() != stderrLog) {
+        changes["stderr_log"] = newConfig.at("stderr_log").get<std::string>();
+    }
+
+    for (const auto& envVar : newConfig.at("environment_variables")) {
+        std::string envVarStr = envVar.get<std::string>();
+        const auto delimiterPos = envVarStr.find('=');
+        auto key = envVarStr.substr(0, delimiterPos);
+        const auto value = envVarStr.substr(delimiterPos + 1);
+        if (environmentVariables[key] != value) {
+            changes["environment_variables"] = "changed";
+            break;
+        }
+    }
+
+    return changes;
+}
+
+
+void Process::applyChanges(const ConfigChangesMap& changes) {
+    for (const auto& change : changes) {
+        const std::string& key = change.first;
+        const std::string& value = change.second;
+
+        if (key == "command") {
+            command = value;
+        } else if (key == "instances") {
+            instances = std::stoi(value);
+        } else if (key == "auto_start") {
+            autoStart = (value == "1");
+        } else if (key == "auto_restart") {
+            autoRestart = value;
+        } else if (key == "start_time") {
+            startTime = std::stoi(value);
+        } else if (key == "stop_time") {
+            stopTime = std::stoi(value);
+        } else if (key == "restart_attempts") {
+            restartAttempts = std::stoi(value);
+        } else if (key == "stop_signal") {
+            stopSignal = signalMap.at(value);
+        } else if (key == "expected_exit_codes") {
+            // Assuming expected_exit_codes are provided as a JSON array of integers
+            try {
+                expectedExitCodes.clear();
+                json exitCodesJson = json::parse(value);
+                for (const auto& code : exitCodesJson) {
+                    expectedExitCodes.push_back(code.get<int>());
+                }
+            } catch (const std::exception& e) {
+                throw std::runtime_error(name + ": Error parsing expected_exit_codes: " + std::string(e.what()));
+            }
+        } else if (key == "working_directory") {
+            workingDirectory = value;
+        } else if (key == "umask") {
+            umaskInt = std::stoi(value);
+        } else if (key == "stdout_log") {
+            stdoutLog = value;
+        } else if (key == "stderr_log") {
+            stderrLog = value;
+        } else if (key == "environment_variables") {
+            environmentVariables.clear();
+            try {
+                json envVarsJson = json::parse(value);
+                for (const auto& envVar : envVarsJson) {
+                    std::string envVarStr = envVar.get<std::string>();
+                    const auto delimiterPos = envVarStr.find('=');
+                    auto key = envVarStr.substr(0, delimiterPos);
+                    const auto val = envVarStr.substr(delimiterPos + 1);
+                    environmentVariables[key] = val;
+                }
+            } catch (const std::exception& e) {
+                throw std::runtime_error(name + ": Error parsing environment_variables: " + std::string(e.what()));
+            }
+        }
+    }
+}
+
+
+void Process::reloadConfig(const json& newConfig) {
+    Logger::getInstance().log("Reloading config for process: " + name);
+
+    // Detect and apply configuration changes
+    ConfigChangesMap changes = detectChanges(newConfig);
+    if (!changes.empty()) {
+        applyChanges(changes);
+        if (changesRequireRestart(changes)) {
+            Logger::getInstance().log("Some changes require a restart for process: " + name);
+            stop();
+            start();
+        } else {
+            sendSighup();
+        }
+    }
+}
+
+bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
+    static const std::vector<std::string> restartKeys = {"command", "instances", "auto_start", "auto_restart", "start_time", "stop_time", "restart_attempts", "stop_signal", "expected_exit_codes", "working_directory", "umask"};
+    for (const auto& key : restartKeys) {
+        if (changes.find(key) != changes.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+// void Process::sighupHandler(int sig) {
+//     Logger::getInstance().log("Received SIGHUP signal for process: " + name);
+//     // reloadConfig();
+// }
+
+void Process::sendSighup() {
+    Logger::getInstance().log("Sending SIGHUP signal to process: " + name);
+
+    for (const auto& pid : child_pids) {
+        if (kill(pid, SIGHUP) != 0) {
+            Logger::getInstance().logError("Error sending SIGHUP to PID " + std::to_string(pid) + ": " + std::strerror(errno));
+        }
+    }
+}
+
+
 void Process::setUpEnvironment() {
     for (const auto& [key, value] : environmentVariables) {
         setenv(key.c_str(), value.c_str(), 1);
@@ -133,6 +322,7 @@ int Process::getRunningChildCount() {
 }
 
 void Process::runChildProcess() const {
+    // signal(SIGHUP, sighupHandler);
     if (chdir(workingDirectory.c_str()) != 0) {
         perror("Failed to change directory");
         _exit(EXIT_FAILURE);

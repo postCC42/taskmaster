@@ -43,7 +43,7 @@ TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(confi
 
     displayUsage();
     initializeProcesses(config);
-    commandLoop();
+    commandLoop(configParser);
 }
 
 TaskMaster::~TaskMaster() {
@@ -99,17 +99,17 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 }
 
 // ___________________ COMMAND HANDLING ___________________
-void TaskMaster::commandLoop() {
+void TaskMaster::commandLoop(ConfigParser& configParser) {
     std::string command;
     while (std::cout << GREEN << "taskmaster> " << RESET && std::getline(std::cin, command) && command != "exit") {
         if (std::cin.eof()) {
             break;
         }
-        handleCommand(command);
+        handleCommand(command, configParser);
     }
 }
 
-void TaskMaster::handleCommand(const std::string &command) {
+void TaskMaster::handleCommand(const std::string &command, ConfigParser& configParser) {
     Logger::getInstance().logToFile("> " + command);
     const std::vector<std::string> words = Utils::split(command, ' ');
 
@@ -137,6 +137,13 @@ void TaskMaster::handleCommand(const std::string &command) {
         case Command::Restart:
             if (words.size() > 1) {
                 restartProcess(words[1]);
+            } else {
+                Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
+            }
+            break;
+        case Command::Reload:
+            if (words.size() > 1) {
+                reloadProcess(words[1], configParser);
             } else {
                 Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
             }
@@ -193,6 +200,46 @@ void TaskMaster::restartProcess(const std::string &processName) {
         startProcess(processName);
     }
 }
+
+void TaskMaster::reloadProcess(const std::string& processName, ConfigParser& configParser) {
+    Process* process = findProcess(processName);
+    if (process != nullptr) {
+        // Reload the configuration file
+        json newConfig = configParser.getConfig();
+
+        // Find the specific configuration for the process
+        auto processConfigIt = newConfig.at("programs").find(processName);
+        if (processConfigIt != newConfig.at("programs").end()) {
+            // Directly call the reload function on the process
+            process->reloadConfig(processConfigIt.value());
+        } else {
+            Logger::getInstance().log("Process configuration not found: " + processName);
+        }
+    } else {
+        Logger::getInstance().log("Process not found: " + processName);
+    }
+}
+
+// void TaskMaster::reloadProcess(const std::string& processName, ConfigParser& configParser) {
+//     Process* process = findProcess(processName);
+//     if (process != nullptr) {
+//         // Reload the configuration file
+//         json newConfig = configParser.getConfig();
+
+//         // Find the specific configuration for the process
+//         auto processConfigIt = newConfig.at("programs").find(processName);
+//         if (processConfigIt != newConfig.at("programs").end()) {
+//             // Send SIGHUP signal to the process
+//             if (kill(process->getPid(), SIGHUP) != 0) {
+//                 Logger::getInstance().logError("Error sending SIGHUP to process " + processName + ": " + std::strerror(errno));
+//             }
+//         } else {
+//             Logger::getInstance().log("Process configuration not found: " + processName);
+//         }
+//     } else {
+//         Logger::getInstance().log("Process not found: " + processName);
+//     }
+// }
 
 void TaskMaster::stopAllProcesses() {
     for (auto& [_, process] : processes) {

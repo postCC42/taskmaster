@@ -13,5 +13,8 @@ Command stringToCommand(const std::string& str) {
     if (str == "restart") {
         return Command::Restart;
     }
+    if (str == "reload") {
+        return Command::Reload;
+    }
     return Command::Unknown;
 }
