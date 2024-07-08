@@ -43,7 +43,7 @@ TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(confi
 
     displayUsage();
     initializeProcesses(config);
-    commandLoop(configParser);
+    commandLoop(configFilePath);
 }
 
 TaskMaster::~TaskMaster() {
@@ -99,17 +99,17 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 }
 
 // ___________________ COMMAND HANDLING ___________________
-void TaskMaster::commandLoop(ConfigParser& configParser) {
+void TaskMaster::commandLoop(std::string configFilePath) {
     std::string command;
     while (std::cout << GREEN << "taskmaster> " << RESET && std::getline(std::cin, command) && command != "exit") {
         if (std::cin.eof()) {
             break;
         }
-        handleCommand(command, configParser);
+        handleCommand(command, configFilePath);
     }
 }
 
-void TaskMaster::handleCommand(const std::string &command, ConfigParser& configParser) {
+void TaskMaster::handleCommand(const std::string &command, std::string configFilePath) {
     Logger::getInstance().logToFile("> " + command);
     const std::vector<std::string> words = Utils::split(command, ' ');
 
@@ -143,7 +143,7 @@ void TaskMaster::handleCommand(const std::string &command, ConfigParser& configP
             break;
         case Command::Reload:
             if (words.size() > 1) {
-                reloadProcess(words[1], configParser);
+                reloadProcess(words[1], configFilePath);
             } else {
                 Logger::getInstance().logError("Invalid command format. Usage: restart <process_name>");
             }
@@ -201,11 +201,15 @@ void TaskMaster::restartProcess(const std::string &processName) {
     }
 }
 
-void TaskMaster::reloadProcess(const std::string& processName, ConfigParser& configParser) {
+void TaskMaster::reloadProcess(const std::string& processName, std::string configFilePath) {
     Process* process = findProcess(processName);
     if (process != nullptr) {
-        // Reload the configuration file
-        json newConfig = configParser.getConfig();
+         // Create a new ConfigParser instance to reload the configuration file
+        ConfigParser newConfigParser(configFilePath);
+        json newConfig = newConfigParser.getConfig();
+
+        // Log the new configuration
+        // Logger::getInstance().log("New configuration for " + processName + ": " + newConfig.dump(4));
 
         // Find the specific configuration for the process
         auto processConfigIt = newConfig.at("programs").find(processName);

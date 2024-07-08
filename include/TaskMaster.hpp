@@ -34,12 +34,12 @@ class TaskMaster {
 		static void initializeLogger(const json& config);
 		static void initializeProcesses(const json& config);
 		static void startInitialProcesses();
-		void commandLoop(ConfigParser& configParser);
-		void handleCommand(const std::string& command, ConfigParser& configParser);
+		void commandLoop(std::string configFilePath);
+		void handleCommand(const std::string& command, std::string configFilePath);
 		static void startProcess(const std::string& processName);
 		static void stopProcess(const std::string& processName);
 		static void restartProcess(const std::string& processName);
-		static void reloadProcess(const std::string& processName, ConfigParser& configParser);
+		static void reloadProcess(const std::string& processName, std::string configFilePath);
 		static void displayStatus();
 		static void displayUsage();
 		static Process* findProcess(const std::string& processName);

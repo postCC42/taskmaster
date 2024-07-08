@@ -80,6 +80,11 @@ class Process {
         // void sighupHandler(int sig); 
         void sendSighup();
         std::string vectorToString(const std::vector<int>& vec) const;
+        std::string signalToString(int signal);
+        void updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes);
+        void updateStdoutLog();
+        void updateStderrLog();
+        void updateUmask(std::string newValue);
 
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},

@@ -2,7 +2,7 @@
     "programs": {
         "top": {
             "command": "/usr/bin/top -b",
-            "instances": 2,
+            "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
@@ -12,8 +12,8 @@
             "expected_exit_codes": [0],
             "working_directory": "/tmp/",
             "umask": -1,
-            "stdout_log": "/tmp/system_monitor_output.log",
-            "stderr_log": "/tmp/system_monitor_error.log",
+            "stdout_log": "/tmp/ggg_system_monitor_output.log",
+            "stderr_log": "/tmp/ccc_system_monitor_error.log",
             "environment_variables": []
         },
         "web_server": {

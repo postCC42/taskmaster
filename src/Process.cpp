@@ -126,15 +126,23 @@ ConfigChangesMap Process::detectChanges(const json& newConfig) {
         if (newRestartAttempts < 0) throw std::runtime_error(name + ": Invalid restart attempts: " + std::to_string(newRestartAttempts));
         changes["restart_attempts"] = std::to_string(newRestartAttempts);
     }
+       std::string newStopSignal = newConfig.at("stop_signal").get<std::string>();
 
-    std::string newStopSignal = newConfig.at("stop_signal").get<std::string>();
+    // Log the previous and new stop signals
+    Logger::getInstance().log("Previous stop signal: " + signalToString(stopSignal));
+    Logger::getInstance().log("New stop signal: " + newStopSignal);
+
+    // Check if the new stop signal is valid
     if (signalMap.find(newStopSignal) == signalMap.end()) {
+        Logger::getInstance().log(name + ": Invalid stop signal: " + newStopSignal);
         throw std::runtime_error(name + ": Invalid stop signal: " + newStopSignal);
     }
-    if (newStopSignal != std::to_string(stopSignal)) {
+
+    // If the new stop signal is different from the current one, record the change
+    if (signalMap.at(newStopSignal) != stopSignal) {
+        Logger::getInstance().log("Detected change in stop signal: " + newStopSignal);
         changes["stop_signal"] = newStopSignal;
     }
-
     if (newConfig.at("expected_exit_codes").get<std::vector<int>>() != expectedExitCodes) {
         changes["expected_exit_codes"] = "changed";
     }
@@ -169,6 +177,14 @@ ConfigChangesMap Process::detectChanges(const json& newConfig) {
     return changes;
 }
 
+std::string Process::signalToString(int signal) {
+    for (const auto& entry : signalMap) {
+        if (entry.second == signal) {
+            return entry.first;
+        }
+    }
+    return "Unknown signal";
+}
 
 void Process::applyChanges(const ConfigChangesMap& changes) {
     for (const auto& change : changes) {
@@ -234,6 +250,10 @@ void Process::reloadConfig(const json& newConfig) {
 
     // Detect and apply configuration changes
     ConfigChangesMap changes = detectChanges(newConfig);
+    for (const auto& change : changes) {
+        Logger::getInstance().log("Detected change: " + change.first + " -> " + change.second);
+    }
+
     if (!changes.empty()) {
         applyChanges(changes);
         if (changesRequireRestart(changes)) {
@@ -242,25 +262,82 @@ void Process::reloadConfig(const json& newConfig) {
             stop();
             start();
         } else {
-            sendSighup();
+            // sendSighup();
+            updateDinamicallyWithoutRestarting(changes);
         }
+    } else {
+        Logger::getInstance().log("No changes detected " + name);
     }
 }
 
 bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
-    static const std::vector<std::string> restartKeys = {"command", "instances", "auto_start", "auto_restart", "start_time", "stop_time", "restart_attempts", "stop_signal", "expected_exit_codes", "working_directory", "umask"};
+    static const std::vector<std::string> restartKeys = {"command", "instances", "auto_start",  "working_directory"};
+
+    bool requiresRestart = false;
+
     for (const auto& key : restartKeys) {
         if (changes.find(key) != changes.end()) {
-            return true;
+            Logger::getInstance().log("Detected change in key: " + key);
+            requiresRestart = true;
         }
     }
-    return false;
+
+    return requiresRestart;
+}
+
+void Process::updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes) {
+    for (const auto& change : changes) {
+        if (change.first == "stdout_log") {
+            updateStdoutLog();
+        } else if (change.first == "stderr_log") {
+            updateStderrLog();
+        } else if (change.first == "umask") {
+            updateUmask(change.second);
+        }
+    }
+
+    Logger::getInstance().log("Dinamically updated configuration successfully.");
+}
+
+void Process::updateStdoutLog() {
+    std::cout << "Updating stdout_log to: " << stdoutLog << std::endl;
+    fflush(stdout);
+    fclose(stdout);
+    
+    FILE* new_stdout = freopen(stdoutLog.c_str(), "a", stdout);
+    if (new_stdout == nullptr) {
+        perror("Failed to redirect stdout");
+        _exit(EXIT_FAILURE);
+    } else {
+        stdout = new_stdout;
+    }
+     fflush(stdout);
+}
+
+void Process::updateStderrLog() {
+    fflush(stderr);
+    fflush(stderr);
+    std::cout << "Updating stderr_log to: " << stderrLog << std::endl;
+    FILE* new_stderr = freopen(stderrLog.c_str(), "a", stderr);
+    if (new_stderr == nullptr) {
+        perror("Failed to redirect stderr");
+        _exit(EXIT_FAILURE);
+    } else {
+        stderr = new_stderr;
+    }
+    fflush(stderr);
+}
+
+void Process::updateUmask(std::string newValue) {
+    std::cout << "Updating umask to: " << newValue << std::endl;
+    if (umaskInt != -1) {
+        ::umask(umaskInt);
+    }
 }
 
 
 // void Process::sighupHandler(int sig) {
 //     Logger::getInstance().log("Received SIGHUP signal for process: " + name);
-//     // reloadConfig();
 // }
 
 void Process::sendSighup() {
@@ -373,35 +450,6 @@ void Process::monitorChildProcesses() {
     }
     monitorThreadRunning = false;
 }
-
-
-// void Process::handleChildExit(pid_t pid, int status) {
-//     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
-//     if (it != child_pids.end()) {
-//         child_pids.erase(it);
-//         // int exitStatus;
-//         if (WIFEXITED(status)) {
-//             // exitStatus = WEXITSTATUS(status);
-//             Logger::getInstance().log("Child process " + std::to_string(pid) + " exited with status " + std::to_string(WEXITSTATUS(status)));
-//         } else if (WIFSIGNALED(status)) {
-//             // exitStatus = WTERMSIG(status);
-//             Logger::getInstance().logError("Child process " + std::to_string(pid) + " terminated by signal " + std::to_string(WTERMSIG(status)));
-//         } else {
-//             // exitStatus = -1;
-//             Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
-//         }
-
-//         // if (autoRestart == "always") {
-//         //     Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
-//         //     this->start();
-//         // } else if (autoRestart == "unexpected" && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
-//         //     Logger::getInstance().logError(
-//         //         "Child process " + std::to_string(pid) + " exited with unexpected status " +
-//         //         std::to_string(exitStatus) + ". Considering restart.");
-//         //     this->start();
-//         // }
-//     }
-// }
 
 void Process::handleChildExit(pid_t pid, int status) {
     auto it = std::find(child_pids.begin(), child_pids.end(), pid);
