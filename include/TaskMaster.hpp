@@ -19,6 +19,10 @@ class TaskMaster {
 		~TaskMaster();
 		static void stopAllProcesses();
 		static void reloadConfig();
+		static void updateExistingProcesses(const json& newConfig);
+		static void addNewProcesses(const json& newConfig);
+		static void removeOldProcesses(const json& newConfig);
+		static void updateInstances(Process& process, int newInstances);
 
 	private:
 		std::string configFilePath;

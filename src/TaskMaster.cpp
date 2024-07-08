@@ -3,10 +3,13 @@ ____ TaskMaster Class ____
 
     ____ Initialization and Configuration Parsing ____:
     - Handles initialization of process parameters such as command, instances, and environment variables from a JSON configuration.
+    - Initializes logging based on configuration settings.
 
     Functions:
     - TaskMaster(const std::string& configFilePath): Constructor initializing TaskMaster with a configuration file path, displaying usage information, initializing processes, and starting the command loop.
-    - initializeProcesses(): Reads and parses configuration data to initialize Process instances for each program defined in the configuration file.
+    - ~TaskMaster(): Destructor ensuring all processes are stopped gracefully upon shutdown.
+    - initializeLogger(const json& config): Initializes logging based on configuration settings.
+    - initializeProcesses(const json& config): Reads and parses configuration data to initialize Process instances for each program defined in the configuration file.
     - startInitialProcesses(): Starts processes configured to begin immediately upon initialization based on their startup time.
     - findProcess(const std::string& processName): Retrieves a pointer to a Process instance by its name for command handling and management.
 
@@ -14,13 +17,14 @@ ____ TaskMaster Class ____
     - Manages user commands for process control and status checking.
 
     Functions:
-    - commandLoop(): Enters a loop to continuously accept and process user commands (start, stop, status, exit).
-    - handleCommand(const std::string& command): Parses and executes user commands to manage processes (start <process_name>, stop <process_name>, status, exit).
-    - startProcess(const std::string& processName): Initiates the startup of a specified process by name, handles startup errors, and displays status messages.
-    - stopProcess(const std::string& processName): Terminates a running process by name, ensuring proper cleanup and management of child processes.
+    - commandLoop(): Enters a loop to continuously accept and process user commands (start, stop, restart, reload, status, exit).
+    - handleCommand(const std::string& command): Parses and executes user commands to manage processes.
+    - startProcess(const std::string& processName): Initiates the startup of a specified process by name.
+    - stopProcess(const std::string& processName): Terminates a running process by name.
+    - restartProcess(const std::string& processName): Restarts a process by name.
+    - reloadConfig(): Reloads the configuration file, updating or adding processes as necessary.
     - stopAllProcesses(): Stops all managed processes, ensuring all child processes are terminated gracefully.
     - displayStatus(): Retrieves and displays the current running status of all managed processes (Running or Stopped).
-    - stringToCommand(const std::string& commandStr): Converts a string command to its corresponding enum Command type for command processing.
     - displayUsage(): Displays usage instructions including implemented and to-be-implemented commands.
 
     ____ Utility and Signal Handling ____:
@@ -28,8 +32,10 @@ ____ TaskMaster Class ____
 
     Functions:
     - signalHandler(int signal): Handles signals such as SIGINT to ensure graceful termination of processes.
+    - sendSighupSignalToReload(): Sends a SIGHUP signal to reload the configuration without stopping the program.
 
 */
+
 
 #include "TaskMaster.hpp"
 
@@ -213,52 +219,42 @@ void TaskMaster::reloadConfig() {
     ConfigParser newConfigParser(g_configFilePath);
     json newConfig = newConfigParser.getConfig();
 
+    updateExistingProcesses(newConfig);
+    addNewProcesses(newConfig);
+    removeOldProcesses(newConfig);
+}
+
+void TaskMaster::updateExistingProcesses(const json& newConfig) {
     std::set<std::string> updatedProcesses;
 
-    // Update existing processes and add new ones
     for (const auto& item : newConfig.at("programs").items()) {
         auto it = processes.find(item.key());
         if (it != processes.end()) {
-            // Process already exists
             it->second.reloadConfig(item.value());
             Logger::getInstance().log("Process " + item.key() + " reloaded");
 
-            // Check if instances need to be adjusted
-            int currentInstances = it->second.getNumberOfInstances();
-            int newInstances = item.value().at("instances").get<int>();
+            updateInstances(it->second, item.value().at("instances").get<int>());
+        }
+        updatedProcesses.insert(item.key());
+    }
+}
 
-            if (newInstances > currentInstances) {
-                // Start additional instances
-                int instancesToStart = newInstances - currentInstances;
-                for (int i = 0; i < instancesToStart; ++i) {
-                    // startProcess(item.key());
-                    it->second.start();
-                }
-            } else if (newInstances < currentInstances) {
-                // Stop excess instances
-                int instancesToStop = currentInstances - newInstances;
-                for (int i = 0; i < instancesToStop; ++i) {
-                    it->second.stopInstance();
-                }
-            }
-
-        } else {
-            // New process
+void TaskMaster::addNewProcesses(const json& newConfig) {
+    for (const auto& item : newConfig.at("programs").items()) {
+        if (processes.find(item.key()) == processes.end()) {
             processes.emplace(item.key(), Process(item.key(), item.value()));
             Logger::getInstance().log("New process " + item.key() + " added and initialized");
 
-            // Start if auto start is enabled
             if (processes.at(item.key()).getAutoStart()) {
                 processes.at(item.key()).start();
             }
         }
-        updatedProcesses.insert(item.key());
     }
+}
 
-    // Remove processes that are no longer in the new configuration
+void TaskMaster::removeOldProcesses(const json& newConfig) {
     for (auto it = processes.begin(); it != processes.end();) {
-        if (updatedProcesses.find(it->first) == updatedProcesses.end()) {
-            // Stop all instances of the process before removing it
+        if (newConfig.at("programs").find(it->first) == newConfig.at("programs").end()) {
             it->second.stop();
             Logger::getInstance().log("Process " + it->first + " removed");
             it = processes.erase(it);
@@ -267,6 +263,23 @@ void TaskMaster::reloadConfig() {
         }
     }
 }
+
+void TaskMaster::updateInstances(Process& process, int newInstances) {
+    int currentInstances = process.getNumberOfInstances();
+
+    if (newInstances > currentInstances) {
+        int instancesToStart = newInstances - currentInstances;
+        for (int i = 0; i < instancesToStart; ++i) {
+            process.start();
+        }
+    } else if (newInstances < currentInstances) {
+        int instancesToStop = currentInstances - newInstances;
+        for (int i = 0; i < instancesToStop; ++i) {
+            process.stopInstance();
+        }
+    }
+}
+
 
 void TaskMaster::stopAllProcesses() {
     for (auto& [_, process] : processes) {
