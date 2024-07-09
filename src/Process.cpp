@@ -107,11 +107,33 @@ void Process::start() {
     if (instances < 1) {
         throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
     }
+    Logger::getInstance().log("Starting " + name);
 
-    // Check if any child process is already running
-    int runningChildCount = getRunningChildCount();
+    int attempts = 0;
+    do {
+        try {
+            startChildProcessAndMonitor();
+            usleep(startTime * 1000000);
+            if (isRunning()) {
+                Logger::getInstance().log("Process " + name + " started successfully");
+                break;
+            }
+            Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + name);
+        } catch (const std::exception &ex) {
+            Logger::getInstance().logError("Error starting program " + name + ": " + ex.what());
+            stop();
+        }
+        if (attempts == restartAttempts) {
+            Logger::getInstance().logError("Maximum restart attempts reached for " + name);
+            stop();
+            break;
+        }
+        attempts++;
+    } while (attempts <= restartAttempts);
+}
 
-    for (int i = runningChildCount; i < instances; ++i) {
+void Process::startChildProcessAndMonitor() {
+    for (int i = getRunningChildCount(); i < instances; ++i) {
         pid_t child_pid = fork();
         if (child_pid < 0) {
             throw std::runtime_error("Fork failure for instance " + std::to_string(i));
@@ -120,11 +142,13 @@ void Process::start() {
             setUpEnvironment();
             runChildProcess();
         } else {
-            Logger::getInstance().log(name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
+            Logger::getInstance().log(
+                name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
             child_pids.push_back(child_pid);
         }
     }
 
+    // TODO: test if this works when reloading
     if (monitorThreadRunning == false) {
         std::thread monitorThread(&Process::monitorChildProcesses, this);
         monitorThread.detach();
@@ -331,7 +355,9 @@ void Process::reloadConfig(const json& newConfig) {
             Logger::getInstance().log("Some changes require a restart for process: " + name);
             userStopped = true;
             stop();
-            start();
+            if (autoStart) {
+                start();
+            }
         } else {
             updateDinamicallyWithoutRestarting(changes);
         }
@@ -348,6 +374,7 @@ bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
     for (const auto& key : restartKeys) {
         if (changes.find(key) != changes.end()) {
             requiresRestart = true;
+            break;
         }
     }
 

@@ -35,8 +35,7 @@ class Process {
         void stop();
         [[nodiscard]] std::string getStatus() const;
         [[nodiscard]] std::string getName() const;
-        [[nodiscard]] bool isRunning() const;
-        [[nodiscard]] int getNumberOfInstances() const; 
+        [[nodiscard]] int getNumberOfInstances() const;
         [[nodiscard]] std::string getCommand() const { return command; }
         [[nodiscard]] int getInstances() const { return instances; }
         [[nodiscard]] bool getAutoStart() const { return autoStart; }
@@ -51,9 +50,7 @@ class Process {
         [[nodiscard]] std::string getStdoutLog() const { return stdoutLog; }
         [[nodiscard]] std::string getStderrLog() const { return stderrLog; }
         [[nodiscard]] const std::map<std::string, std::string>& getEnvironmentVariables() const { return environmentVariables; }
-        [[nodiscard]] const std::map<std::string, int>& getSignalMap() const {
-        return signalMap;
-    }
+        [[nodiscard]] const std::map<std::string, int>& getSignalMap() const { return signalMap; }
         void reloadConfig(const json& newConfig);
         void stopInstance();
 
@@ -78,9 +75,11 @@ class Process {
         json newConfigFile;
         bool userStopped;        
 
+        [[nodiscard]] bool isRunning() const;
         void parseConfig(const json& config);
         void setUpEnvironment();
         int getRunningChildCount();
+        void startChildProcessAndMonitor();
 
         void runChildProcess() const;
         void monitorChildProcesses();
@@ -89,7 +88,6 @@ class Process {
         bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         static void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         void cleanupStoppedProcesses(std::vector<pid_t>& pidsToErase);
-
 
         ConfigChangesMap detectChanges(const json& newConfig);
         void applyChanges(const ConfigChangesMap& changes);

@@ -168,32 +168,9 @@ void TaskMaster::sendSighupSignalToReload() {
 void TaskMaster::startProcess(const std::string &processName) {
     Process *process = findProcess(processName);
     if (process != nullptr) {
-        Logger::getInstance().log("Starting " + processName);
-        int attempts = 0;
-        const int maxAttempts = process->getRestartAttempts();
-        do {
-            try {
-                process->start();
-                usleep(process->getStartTime() * 1000000);
-                if (process->isRunning()) {
-                    Logger::getInstance().log("Process " + processName + " started successfully");
-                    break;
-                }
-                Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + processName);
-            } catch (const std::exception &ex) {
-                Logger::getInstance().logError("Error starting program " + processName + ": " + ex.what());
-                process->stop();
-            }
-            if (attempts == maxAttempts) {
-                Logger::getInstance().logError("Maximum restart attempts reached for " + processName);
-                process->stop();
-                break;
-            }
-            attempts++;
-        } while (attempts <= maxAttempts);
+        process->start();
     }
 }
-
 
 void TaskMaster::stopProcess(const std::string& processName) {
     Process* process = findProcess(processName);
@@ -263,7 +240,7 @@ void TaskMaster::removeOldProcesses(const json& newConfig) {
 void TaskMaster::updateInstances(Process& process, int newInstances) {
     int currentInstances = process.getNumberOfInstances();
 
-    if (newInstances > currentInstances) {
+    if (newInstances > currentInstances && process.getAutoStart()) {
         int instancesToStart = newInstances - currentInstances;
         for (int i = 0; i < instancesToStart; ++i) {
             process.start();
