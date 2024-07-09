@@ -40,13 +40,12 @@ ____ TaskMaster Class ____
 #include "TaskMaster.hpp"
 
 std::map<std::string, Process> TaskMaster::processes;
-std::string g_configFilePath;
+std::string TaskMaster::configFilePath;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
-TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
-    g_configFilePath = configFilePath;
-
-    json config = configParser.getConfig();
+TaskMaster::TaskMaster(const std::string& configFilePath) {
+    TaskMaster::configFilePath = configFilePath;
+    json config = ConfigManager::parseConfig(configFilePath);
     initializeLogger(config);
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
 
@@ -65,8 +64,6 @@ void TaskMaster::initializeLogger(const json& config) {
     const std::string logFilePath = config.at("log_file").get<std::string>();
     Logger::getInstance().initialize(loggingEnabled, logFilePath);
 }
-
-
 
 void TaskMaster::initializeProcesses(const json& config) {
     try {
@@ -171,32 +168,9 @@ void TaskMaster::sendSighupSignalToReload() {
 void TaskMaster::startProcess(const std::string &processName) {
     Process *process = findProcess(processName);
     if (process != nullptr) {
-        Logger::getInstance().log("Starting " + processName);
-        int attempts = 0;
-        const int maxAttempts = process->getRestartAttempts();
-        do {
-            try {
-                process->start();
-                usleep(process->getStartTime() * 1000000);
-                if (process->isRunning()) {
-                    Logger::getInstance().log("Process " + processName + " started successfully");
-                    break;
-                }
-                Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + processName);
-            } catch (const std::exception &ex) {
-                Logger::getInstance().logError("Error starting program " + processName + ": " + ex.what());
-                process->stop();
-            }
-            if (attempts == maxAttempts) {
-                Logger::getInstance().logError("Maximum restart attempts reached for " + processName);
-                process->stop();
-                break;
-            }
-            attempts++;
-        } while (attempts <= maxAttempts);
+        process->start();
     }
 }
-
 
 void TaskMaster::stopProcess(const std::string& processName) {
     Process* process = findProcess(processName);
@@ -216,9 +190,13 @@ void TaskMaster::restartProcess(const std::string &processName) {
 }
 
 void TaskMaster::reloadConfig() {
-    ConfigParser newConfigParser(g_configFilePath);
-    json newConfig = newConfigParser.getConfig();
-
+    json newConfig;
+    try {
+        newConfig = ConfigManager::parseConfig(configFilePath);
+    }
+    catch (const std::exception &ex) {
+        Logger::getInstance().logError("Error reloading configuration: " + std::string(ex.what()));
+    }
     updateExistingProcesses(newConfig);
     addNewProcesses(newConfig);
     removeOldProcesses(newConfig);
@@ -267,7 +245,7 @@ void TaskMaster::removeOldProcesses(const json& newConfig) {
 void TaskMaster::updateInstances(Process& process, int newInstances) {
     int currentInstances = process.getNumberOfInstances();
 
-    if (newInstances > currentInstances) {
+    if (newInstances > currentInstances && process.getAutoStart()) {
         int instancesToStart = newInstances - currentInstances;
         for (int i = 0; i < instancesToStart; ++i) {
             process.start();

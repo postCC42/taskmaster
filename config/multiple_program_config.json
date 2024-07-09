@@ -2,8 +2,8 @@
     "programs": {
         "top": {
             "command": "/usr/bin/top -b",
-            "instances": 3,
-            "auto_start": true,
+            "instances": 4,
+            "auto_start": false,
             "auto_restart": "unexpected",
             "start_time": 1,
             "stop_time": 5,

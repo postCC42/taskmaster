@@ -5,13 +5,14 @@
 #include <iostream>
 #include <vector>
 #include "Command.hpp"
-#include "ConfigParser.hpp"
+#include "ConfigManager.hpp"
 #include "Process.hpp"
 #include "Utils.hpp"
 #include "colors.hpp"
 #include <set>
 
 class Process;
+using json = nlohmann::json;
 
 class TaskMaster {
 	public:
@@ -25,8 +26,7 @@ class TaskMaster {
 		static void updateInstances(Process& process, int newInstances);
 
 	private:
-		std::string configFilePath;
-		ConfigParser configParser;
+		static std::string configFilePath;
 		bool loggingEnabled;
 		std::string logFilePath;
 		static std::map<std::string, Process> processes;
