@@ -9,14 +9,8 @@
 using json = nlohmann::json;
 
 class ConfigParser {
-
-    public:
-        explicit ConfigParser(const std::string& configFilePath);
-        json getConfig() const;
-
-    private:
-        json config;
-        void parseConfig(const std::string& configFilePath);
+public:
+       static json parseConfig(const std::string& configFilePath);
 };
 
 #endif

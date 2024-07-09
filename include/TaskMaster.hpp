@@ -26,7 +26,6 @@ class TaskMaster {
 
 	private:
 		static std::string configFilePath;
-		ConfigParser configParser;
 		bool loggingEnabled;
 		std::string logFilePath;
 		static std::map<std::string, Process> processes;

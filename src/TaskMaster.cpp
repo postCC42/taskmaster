@@ -43,9 +43,9 @@ std::map<std::string, Process> TaskMaster::processes;
 std::string TaskMaster::configFilePath;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
-TaskMaster::TaskMaster(const std::string& configFilePath) : configParser(configFilePath) {
+TaskMaster::TaskMaster(const std::string& configFilePath) {
     TaskMaster::configFilePath = configFilePath;
-    json config = configParser.getConfig();
+    json config = ConfigParser::parseConfig(configFilePath);
     initializeLogger(config);
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
 
@@ -213,8 +213,7 @@ void TaskMaster::restartProcess(const std::string &processName) {
 }
 
 void TaskMaster::reloadConfig() {
-    ConfigParser newConfigParser(configFilePath);
-    json newConfig = newConfigParser.getConfig();
+    json newConfig = ConfigParser::parseConfig(configFilePath);
 
     updateExistingProcesses(newConfig);
     addNewProcesses(newConfig);
