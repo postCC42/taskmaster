@@ -3,7 +3,7 @@
         "top": {
             "command": "/usr/bin/top -b",
             "instances": 4,
-            "auto_start": true,
+            "auto_start": false,
             "auto_restart": "unexpected",
             "start_time": 1,
             "stop_time": 5,

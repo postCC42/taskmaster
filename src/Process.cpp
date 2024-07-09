@@ -217,6 +217,7 @@ void Process::monitorChildProcesses() {
         usleep(100000);
     }
     monitorThreadRunning = false;
+    std::cout << "End of monitoring for " << name << std::endl;
 }
 
 void Process::handleChildExit(pid_t pid, int status) {

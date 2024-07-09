@@ -190,8 +190,13 @@ void TaskMaster::restartProcess(const std::string &processName) {
 }
 
 void TaskMaster::reloadConfig() {
-    json newConfig = ConfigManager::parseConfig(configFilePath);
-
+    json newConfig;
+    try {
+        newConfig = ConfigManager::parseConfig(configFilePath);
+    }
+    catch (const std::exception &ex) {
+        Logger::getInstance().logError("Error reloading configuration: " + std::string(ex.what()));
+    }
     updateExistingProcesses(newConfig);
     addNewProcesses(newConfig);
     removeOldProcesses(newConfig);
