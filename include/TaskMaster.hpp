@@ -25,7 +25,7 @@ class TaskMaster {
 		static void updateInstances(Process& process, int newInstances);
 
 	private:
-		std::string configFilePath;
+		static std::string configFilePath;
 		ConfigParser configParser;
 		bool loggingEnabled;
 		std::string logFilePath;

@@ -40,12 +40,11 @@ ____ TaskMaster Class ____
 #include "TaskMaster.hpp"
 
 std::map<std::string, Process> TaskMaster::processes;
-std::string g_configFilePath;
+std::string TaskMaster::configFilePath;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
-TaskMaster::TaskMaster(const std::string& configFilePath) : configFilePath(configFilePath), configParser(configFilePath) {
-    g_configFilePath = configFilePath;
-
+TaskMaster::TaskMaster(const std::string& configFilePath) : configParser(configFilePath) {
+    TaskMaster::configFilePath = configFilePath;
     json config = configParser.getConfig();
     initializeLogger(config);
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
@@ -65,8 +64,6 @@ void TaskMaster::initializeLogger(const json& config) {
     const std::string logFilePath = config.at("log_file").get<std::string>();
     Logger::getInstance().initialize(loggingEnabled, logFilePath);
 }
-
-
 
 void TaskMaster::initializeProcesses(const json& config) {
     try {
@@ -216,7 +213,7 @@ void TaskMaster::restartProcess(const std::string &processName) {
 }
 
 void TaskMaster::reloadConfig() {
-    ConfigParser newConfigParser(g_configFilePath);
+    ConfigParser newConfigParser(configFilePath);
     json newConfig = newConfigParser.getConfig();
 
     updateExistingProcesses(newConfig);

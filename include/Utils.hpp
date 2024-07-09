@@ -9,7 +9,6 @@
 #include <nlohmann/json.hpp>
 #include "TaskMaster.hpp"
 
-
 class Process;
 
 using ConfigChangesMap = std::unordered_map<std::string, std::string>;
