@@ -372,7 +372,6 @@ void Process::updateUmask(std::string newValue) {
 ConfigChangesMap Process::detectChanges(const json& newConfig) {
     ConfigChangesMap changes;
 
-    // Pass *this to each utility function
     Utils::checkCommand(newConfig, *this, changes);
     Utils::checkInstances(newConfig, *this, changes);
     Utils::checkAutoStart(newConfig, *this, changes);
