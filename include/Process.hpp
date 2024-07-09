@@ -34,11 +34,25 @@ class Process {
         void stop();
         [[nodiscard]] std::string getStatus() const;
         [[nodiscard]] std::string getName() const;
-        [[nodiscard]] int getStartTime() const { return startTime; }
-        [[nodiscard]] int getAutoStart() const { return autoStart; }
-        [[nodiscard]] int getRestartAttempts() const { return restartAttempts; }
         [[nodiscard]] bool isRunning() const;
         [[nodiscard]] int getNumberOfInstances() const; 
+        [[nodiscard]] std::string getCommand() const { return command; }
+        [[nodiscard]] int getInstances() const { return instances; }
+        [[nodiscard]] bool getAutoStart() const { return autoStart; }
+        [[nodiscard]] std::string getAutoRestart() const { return autoRestart; }
+        [[nodiscard]] int getStartTime() const { return startTime; }
+        [[nodiscard]] int getStopTime() const { return stopTime; }
+        [[nodiscard]] int getRestartAttempts() const { return restartAttempts; }
+        [[nodiscard]] int getStopSignal() const { return stopSignal; }
+        [[nodiscard]] const std::vector<int>& getExpectedExitCodes() const { return expectedExitCodes; }
+        [[nodiscard]] std::string getWorkingDirectory() const { return workingDirectory; }
+        [[nodiscard]] int getUmaskInt() const { return umaskInt; }
+        [[nodiscard]] std::string getStdoutLog() const { return stdoutLog; }
+        [[nodiscard]] std::string getStderrLog() const { return stderrLog; }
+        [[nodiscard]] const std::map<std::string, std::string>& getEnvironmentVariables() const { return environmentVariables; }
+        [[nodiscard]] const std::map<std::string, int>& getSignalMap() const {
+        return signalMap;
+    }
         void reloadConfig(const json& newConfig);
         void stopInstance();
 
@@ -61,8 +75,7 @@ class Process {
         std::vector<pid_t> child_pids;
         bool monitorThreadRunning = false;
         json newConfigFile;
-        bool userStopped;
-        
+        bool userStopped;        
 
         void parseConfig(const json& config);
         void setUpEnvironment();
@@ -82,9 +95,6 @@ class Process {
         bool changesRequireRestart(const ConfigChangesMap& changes);
         void updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes);
         void updateUmask(std::string newValue);
-        std::string serializeVector(const std::vector<int>& vec);
-        std::string serializeEnvVars(const std::map<std::string, std::string>& envVars);
-        std::map<std::string, std::string> deserializeEnvVars(const std::string& str);
 
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},

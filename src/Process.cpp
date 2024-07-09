@@ -369,111 +369,28 @@ void Process::updateUmask(std::string newValue) {
     }
 }
 
-// todo refactoring
 ConfigChangesMap Process::detectChanges(const json& newConfig) {
     ConfigChangesMap changes;
 
-    if (newConfig.at("command").get<std::string>() != command) {
-        changes["command"] = newConfig.at("command").get<std::string>();
-    }
-
-    if (newConfig.at("instances").get<int>() != instances) {
-        int newInstances = newConfig.at("instances").get<int>();
-        if (newInstances < 0) throw std::runtime_error(name + ": Invalid number of instances: " + std::to_string(newInstances));
-        changes["instances"] = std::to_string(newInstances);
-    }
-
-    if (newConfig.at("auto_start").get<bool>() != autoStart) {
-        changes["auto_start"] = std::to_string(newConfig.at("auto_start").get<bool>());
-    }
-
-    if (newConfig.at("auto_restart").get<std::string>() != autoRestart) {
-        std::string newAutoRestart = newConfig.at("auto_restart").get<std::string>();
-        if (newAutoRestart != "always" && newAutoRestart != "never" && newAutoRestart != "unexpected") {
-            throw std::runtime_error(name + ": Invalid auto restart value: " + newAutoRestart);
-        }
-        changes["auto_restart"] = newAutoRestart;
-    }
-
-    if (newConfig.at("start_time").get<int>() != startTime) {
-        int newStartTime = newConfig.at("start_time").get<int>();
-        if (newStartTime < 0) throw std::runtime_error(name + ": Invalid start time: " + std::to_string(newStartTime));
-        changes["start_time"] = std::to_string(newStartTime);
-    }
-
-    if (newConfig.at("stop_time").get<int>() != stopTime) {
-        int newStopTime = newConfig.at("stop_time").get<int>();
-        if (newStopTime < 0) throw std::runtime_error(name + ": Invalid stop time: " + std::to_string(newStopTime));
-        changes["stop_time"] = std::to_string(newStopTime);
-    }
-
-    if (newConfig.at("restart_attempts").get<int>() != restartAttempts) {
-        int newRestartAttempts = newConfig.at("restart_attempts").get<int>();
-        if (newRestartAttempts < 0) throw std::runtime_error(name + ": Invalid restart attempts: " + std::to_string(newRestartAttempts));
-        changes["restart_attempts"] = std::to_string(newRestartAttempts);
-    }
-       std::string newStopSignal = newConfig.at("stop_signal").get<std::string>();
-
-    if (signalMap.find(newStopSignal) == signalMap.end()) {
-        Logger::getInstance().log(name + ": Invalid stop signal: " + newStopSignal);
-        throw std::runtime_error(name + ": Invalid stop signal: " + newStopSignal);
-    }
-
-    if (signalMap.at(newStopSignal) != stopSignal) {
-        changes["stop_signal"] = newStopSignal;
-    }
-    if (newConfig.at("expected_exit_codes").get<std::vector<int>>() != expectedExitCodes) {
-        expectedExitCodes.clear();
-        expectedExitCodes = newConfig.at("expected_exit_codes").get<std::vector<int>>();
-        changes["expected_exit_codes"] = serializeVector(expectedExitCodes);
-    }
-
-    if (newConfig.at("working_directory").get<std::string>() != workingDirectory) {
-        changes["working_directory"] = newConfig.at("working_directory").get<std::string>();
-    }
-
-    if (newConfig.at("umask").get<int>() != umaskInt) {
-        changes["umask"] = std::to_string(newConfig.at("umask").get<int>());
-    }
-
-    if (newConfig.at("stdout_log").get<std::string>() != stdoutLog) {
-        changes["stdout_log"] = newConfig.at("stdout_log").get<std::string>();
-    }
-
-    if (newConfig.at("stderr_log").get<std::string>() != stderrLog) {
-        changes["stderr_log"] = newConfig.at("stderr_log").get<std::string>();
-    }
-
-    std::map<std::string, std::string> newEnvVars;
-    for (const auto& envVar : newConfig.at("environment_variables")) {
-        std::string envVarStr = envVar.get<std::string>();
-        const auto delimiterPos = envVarStr.find('=');
-        auto key = envVarStr.substr(0, delimiterPos);
-        const auto value = envVarStr.substr(delimiterPos + 1);
-        newEnvVars[key] = value;
-    }
-
-    if (newEnvVars != environmentVariables) {
-        changes["environment_variables"] = serializeEnvVars(newEnvVars);
-    }
+    // Pass *this to each utility function
+    Utils::checkCommand(newConfig, *this, changes);
+    Utils::checkInstances(newConfig, *this, changes);
+    Utils::checkAutoStart(newConfig, *this, changes);
+    Utils::checkAutoRestart(newConfig, *this, changes);
+    Utils::checkStartTime(newConfig, *this, changes);
+    Utils::checkStopTime(newConfig, *this, changes);
+    Utils::checkRestartAttempts(newConfig, *this, changes);
+    Utils::checkStopSignal(newConfig, *this, changes);
+    Utils::checkExpectedExitCodes(newConfig, *this, changes);
+    Utils::checkWorkingDirectory(newConfig, *this, changes);
+    Utils::checkUmask(newConfig, *this, changes);
+    Utils::checkStdoutLog(newConfig, *this, changes);
+    Utils::checkStderrLog(newConfig, *this, changes);
+    Utils::checkEnvironmentVariables(newConfig, *this, changes);
 
     return changes;
 }
 
-std::string Process::serializeVector(const std::vector<int>& vec) {
-    json j = vec;
-    return j.dump();
-}
-
-std::string Process::serializeEnvVars(const std::map<std::string, std::string>& envVars) {
-    json j = envVars;
-    return j.dump();
-}
-
-std::map<std::string, std::string> Process::deserializeEnvVars(const std::string& str) {
-    json j = json::parse(str);
-    return j.get<std::map<std::string, std::string>>();
-}
 
 void Process::applyChanges(const ConfigChangesMap& changes) {
     for (const auto& change : changes) {
@@ -497,7 +414,7 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "stop_signal") {
             stopSignal = signalMap.at(value);
         } else if (key == "expected_exit_codes") {   
-            // Handle expected_exit_codes if needed
+            // Already handled
         } else if (key == "working_directory") {
             workingDirectory = value;
         } else if (key == "umask") {
@@ -507,10 +424,11 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "stderr_log") {
             stderrLog = value;
         } else if (key == "environment_variables") {
-            environmentVariables = deserializeEnvVars(value);
+            environmentVariables = Utils::deserializeEnvVars(value);
         }
     }
 }
+
 
 
 // ___________________ CHECK LIFECYCLE ___________________
