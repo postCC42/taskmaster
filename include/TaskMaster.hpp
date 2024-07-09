@@ -5,13 +5,14 @@
 #include <iostream>
 #include <vector>
 #include "Command.hpp"
-#include "ConfigParser.hpp"
+#include "ConfigManager.hpp"
 #include "Process.hpp"
 #include "Utils.hpp"
 #include "colors.hpp"
 #include <set>
 
 class Process;
+using json = nlohmann::json;
 
 class TaskMaster {
 	public:

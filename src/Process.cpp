@@ -372,20 +372,20 @@ void Process::updateUmask(std::string newValue) {
 ConfigChangesMap Process::detectChanges(const json& newConfig) {
     ConfigChangesMap changes;
 
-    Utils::checkCommand(newConfig, *this, changes);
-    Utils::checkInstances(newConfig, *this, changes);
-    Utils::checkAutoStart(newConfig, *this, changes);
-    Utils::checkAutoRestart(newConfig, *this, changes);
-    Utils::checkStartTime(newConfig, *this, changes);
-    Utils::checkStopTime(newConfig, *this, changes);
-    Utils::checkRestartAttempts(newConfig, *this, changes);
-    Utils::checkStopSignal(newConfig, *this, changes);
-    Utils::checkExpectedExitCodes(newConfig, *this, changes);
-    Utils::checkWorkingDirectory(newConfig, *this, changes);
-    Utils::checkUmask(newConfig, *this, changes);
-    Utils::checkStdoutLog(newConfig, *this, changes);
-    Utils::checkStderrLog(newConfig, *this, changes);
-    Utils::checkEnvironmentVariables(newConfig, *this, changes);
+    ConfigManager::checkCommand(newConfig, *this, changes);
+    ConfigManager::checkInstances(newConfig, *this, changes);
+    ConfigManager::checkAutoStart(newConfig, *this, changes);
+    ConfigManager::checkAutoRestart(newConfig, *this, changes);
+    ConfigManager::checkStartTime(newConfig, *this, changes);
+    ConfigManager::checkStopTime(newConfig, *this, changes);
+    ConfigManager::checkRestartAttempts(newConfig, *this, changes);
+    ConfigManager::checkStopSignal(newConfig, *this, changes);
+    ConfigManager::checkExpectedExitCodes(newConfig, *this, changes);
+    ConfigManager::checkWorkingDirectory(newConfig, *this, changes);
+    ConfigManager::checkUmask(newConfig, *this, changes);
+    ConfigManager::checkStdoutLog(newConfig, *this, changes);
+    ConfigManager::checkStderrLog(newConfig, *this, changes);
+    ConfigManager::checkEnvironmentVariables(newConfig, *this, changes);
 
     return changes;
 }
@@ -423,7 +423,7 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "stderr_log") {
             stderrLog = value;
         } else if (key == "environment_variables") {
-            environmentVariables = Utils::deserializeEnvVars(value);
+            environmentVariables = ConfigManager::deserializeEnvVars(value);
         }
     }
 }

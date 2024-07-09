@@ -3,7 +3,7 @@ SRC_DIR := src
 INCLUDE_DIR := include
 BUILD_DIR := build
 
-SRC_FILES := main.cpp Command.cpp ConfigParser.cpp Logger.cpp Process.cpp TaskMaster.cpp Utils.cpp
+SRC_FILES := main.cpp Command.cpp ConfigManager.cpp Logger.cpp Process.cpp TaskMaster.cpp Utils.cpp
 SRCS := $(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJS := $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.o)
 DEPS := $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.d)

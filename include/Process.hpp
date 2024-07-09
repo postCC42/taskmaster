@@ -19,6 +19,7 @@
 #include "colors.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
+#include "ConfigManager.hpp"
 // #include <atomic> // thread safe
 
 
