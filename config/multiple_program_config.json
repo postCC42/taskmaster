@@ -2,7 +2,7 @@
     "programs": {
         "top": {
             "command": "/usr/bin/top -b",
-            "instances": 1,
+            "instances": 3,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
@@ -12,7 +12,7 @@
             "expected_exit_codes": [0],
             "working_directory": "/tmp/",
             "umask": -1,
-            "stdout_log": "/tmp/system_monitor_output.log",
+            "stdout_log": "/tmp/asystem_monitor_output.log",
             "stderr_log": "/tmp/system_monitor_error.log",
             "environment_variables": []
         },
@@ -31,7 +31,7 @@
             "stdout_log": "/tmp/web_server_output.log",
             "stderr_log": "/tmp/web_server_error.log",
             "environment_variables": [
-                "GREETING=Hello you, good luck!",
+                "GREETING=Hello you guys, good luck!",
                 "AUTHORS=Alfa et Omega"
             ]
         }
