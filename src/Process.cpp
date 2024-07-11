@@ -168,6 +168,7 @@ int Process::getRunningChildCount() {
     return runningChildCount;
 }
 
+
 void Process::runChildProcess() const {
     if (chdir(workingDirectory.c_str()) != 0) {
         perror("Failed to change directory");
@@ -292,7 +293,7 @@ bool Process::stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
             if (errno == ESRCH) {
                 pidsToErase.push_back(pid);
                 return true;
-            }
+            } 
         }
         usleep(100000);
     }

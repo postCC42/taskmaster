@@ -3,7 +3,7 @@
         "top": {
             "command": "/usr/bin/top -b",
             "instances": 4,
-            "auto_start": false,
+            "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
             "stop_time": 5,
@@ -12,12 +12,12 @@
             "expected_exit_codes": [0],
             "working_directory": "/tmp/",
             "umask": -1,
-            "stdout_log": "/tmp/asystem_monitor_output.log",
+            "stdout_log": "/tmp/system_monitor_output.log",
             "stderr_log": "/tmp/system_monitor_error.log",
             "environment_variables": []
         },
-        "web_server": {
-            "command": "/usr/bin/python3 http_server.py",
+        "server": {
+            "command": "/usr/bin/python3 server.py",
             "instances": 1,
             "auto_start": true,
             "auto_restart": "unexpected",
@@ -26,7 +26,7 @@
             "restart_attempts": 3,
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [0],
-            "working_directory": "./script/",
+            "working_directory": ".",
             "umask": -1,
             "stdout_log": "/tmp/web_server_output.log",
             "stderr_log": "/tmp/web_server_error.log",
