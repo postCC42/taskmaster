@@ -289,10 +289,9 @@ void TaskMaster::displayUsage() {
 
 
 // ___________________ DROP PRIVILEGES ___________________
-
 void TaskMaster::dropPrivilege() {
-    if (getuid() == 0) { // if root
-        // Drop privileges to a non-root user 
+    if (getuid() == 0) {
+        Logger::getInstance().log("TaskMaster started as root. Dropping privileges...");
         // uid = 1000 is the first non-system user created during OS installation
         if (setgid(1000) != 0 || setuid(1000) != 0) {
             Logger::getInstance().logError("Failed to drop privileges.");

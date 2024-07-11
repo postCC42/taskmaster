@@ -168,7 +168,6 @@ int Process::getRunningChildCount() {
     return runningChildCount;
 }
 
-
 void Process::runChildProcess() const {
     if (chdir(workingDirectory.c_str()) != 0) {
         perror("Failed to change directory");

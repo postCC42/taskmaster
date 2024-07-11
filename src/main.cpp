@@ -10,12 +10,6 @@ int main(const int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Needs to be started as root
-    if (geteuid() != 0) {
-        std::cerr << "This program must be run as root" << std::endl;
-        return EXIT_FAILURE;
-    }
-
     try {
         TaskMaster taskmaster(argv[1]);
     } catch (const std::exception& ex) {
