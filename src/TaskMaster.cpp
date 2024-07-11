@@ -34,8 +34,11 @@ ____ TaskMaster Class ____
     - signalHandler(int signal): Handles signals such as SIGINT to ensure graceful termination of processes.
     - sendSighupSignalToReload(): Sends a SIGHUP signal to reload the configuration without stopping the program.
 
-*/
+    ____ Dropping privileges ____:
 
+    Functions:
+    - dropPrivilege(): Checks if the program is running as root and drops privileges to a specified non-root user (uid 1000) using setgid() and setuid(). Logs success or failure.
+*/
 
 #include "TaskMaster.hpp"
 
@@ -50,6 +53,7 @@ TaskMaster::TaskMaster(const std::string& configFilePath) {
     Logger::getInstance().log("TaskMaster created with config file path: " + configFilePath);
 
     displayUsage();
+    dropPrivilege();
     initializeProcesses(config);
     commandLoop();
 }
@@ -71,7 +75,6 @@ void TaskMaster::initializeProcesses(const json& config) {
             processes.emplace(item.key(), Process(item.key(), item.value()));
             Logger::getInstance().log("Process " + item.key() + " initialized");
         }
-
         startInitialProcesses();
         signal(SIGINT, Utils::signalHandler);
         signal(SIGQUIT, Utils::signalHandler);
@@ -282,4 +285,19 @@ void TaskMaster::displayUsage() {
     Logger::getInstance().log("status: Show the status of all programs.");
     Logger::getInstance().log("exit: Exit the taskmaster.");
     Logger::getInstance().log("");
+}
+
+
+// ___________________ DROP PRIVILEGES ___________________
+
+void TaskMaster::dropPrivilege() {
+    if (getuid() == 0) { // if root
+        // Drop privileges to a non-root user 
+        // uid = 1000 is the first non-system user created during OS installation
+        if (setgid(1000) != 0 || setuid(1000) != 0) {
+            Logger::getInstance().logError("Failed to drop privileges.");
+            exit(EXIT_FAILURE);
+        }
+        Logger::getInstance().log("Dropped privileges successfully.");
+    }
 }
