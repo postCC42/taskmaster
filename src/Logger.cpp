@@ -1,11 +1,12 @@
 #include "../include/Logger.hpp"
 
-Logger* Logger::instance = nullptr;
+std::once_flag Logger::initInstanceFlag;
+std::unique_ptr<Logger> Logger::instance;
 
 Logger& Logger::getInstance() {
-    if (instance == nullptr) {
-        instance = new Logger();
-    }
+    std::call_once(Logger::initInstanceFlag, []() {
+        instance.reset(new Logger);
+    });
     return *instance;
 }
 
@@ -19,12 +20,10 @@ void Logger::initialize(const bool logToFile, const std::string& logFilePath) {
     }
 }
 
-void Logger::cleanup() {
+Logger::~Logger() {
     if (logFile.is_open()) {
         logFile.close();
     }
-    delete instance;
-    instance = nullptr;
 }
 
 void Logger::log(const std::string& message) {

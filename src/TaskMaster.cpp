@@ -61,7 +61,6 @@ TaskMaster::TaskMaster(const std::string& configFilePath) {
 TaskMaster::~TaskMaster() {
     stopAllProcesses();
     Logger::getInstance().log("TaskMaster shutting down...");
-    Logger::getInstance().cleanup();
 }
 
 void TaskMaster::initializeLogger(const json& config) {
