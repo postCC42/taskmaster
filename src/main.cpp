@@ -2,8 +2,6 @@
 #include <iostream>
 #include <string>
 
-
-
 int main(const int argc, char* argv[]) {
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <config_file_path>" << std::endl;

@@ -7,7 +7,7 @@
 class Logger {
     public:
         static Logger& getInstance();
-        ~Logger();
+        void cleanup();
         void initialize(const bool logToFile, const std::string& logFilePath);
 
         void log(const std::string& message);

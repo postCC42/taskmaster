@@ -19,10 +19,12 @@ void Logger::initialize(const bool logToFile, const std::string& logFilePath) {
     }
 }
 
-Logger::~Logger() {
+void Logger::cleanup() {
     if (logFile.is_open()) {
         logFile.close();
     }
+    delete instance;
+    instance = nullptr;
 }
 
 void Logger::log(const std::string& message) {
