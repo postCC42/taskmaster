@@ -12,7 +12,7 @@ CXX_DEFS := NAME=\"$(NAME)\"
 CXX := g++
 CXX_FLAGS := -Wextra -Werror -Wall -std=c++17 -O2 -g3 -fsanitize=thread
 CXX_LINKS := -L$(LIB_DIR)
-CXX_LIBS :=
+CXX_LIBS := -lreadline
 
 CXX_HEADERS := -I$(INCLUDE_DIR)
 

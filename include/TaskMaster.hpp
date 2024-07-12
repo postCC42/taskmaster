@@ -11,6 +11,8 @@
 #include "colors.hpp"
 #include <set>
 #include <unistd.h> // for setuid() and setgid()
+#include <readline/readline.h>
+#include <readline/history.h>
 
 class Process;
 using json = nlohmann::json;
@@ -51,7 +53,6 @@ class TaskMaster {
 		static void displayUsage();
 		static Process* findProcess(const std::string& processName);
 		static void dropPrivilege();
-
 };
 
 #endif

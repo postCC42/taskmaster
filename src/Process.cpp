@@ -221,6 +221,7 @@ void Process::startChildProcessAndMonitor() {
 
 int Process::getRunningChildCount() {
     int runningChildCount = 0;
+    std::lock_guard<std::mutex> guard(childPidsMutex);
     for (const pid_t& pid : childPids) {
         if (kill(pid, 0) == 0) {
             runningChildCount++;
@@ -315,7 +316,6 @@ void Process::handleChildExit(pid_t pid, int status) {
 
 // ___________________ STOP AND SYNCH ___________________
 void Process::stop() {
-    std::cout << "Running child count: " << getRunningChildCount() << std::endl;
     if (getRunningChildCount() == 0) {
         return;
     }
@@ -360,7 +360,7 @@ bool Process::stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
                 return true;
             } 
         }
-        // usleep(100000);
+        usleep(100000);
     }
 
     return false;
