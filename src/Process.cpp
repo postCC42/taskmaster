@@ -109,7 +109,7 @@ void Process::start() {
     }
     Logger::getInstance().log("Starting " + name);
 
-    stopAutoRestart = true;
+    safeSetStopAutoRestart(true);
     int attempts = 0;
     constexpr int oneSecond = 1000000;
     const int totalSleepTime = startTime * oneSecond;
@@ -126,7 +126,10 @@ void Process::start() {
 
             if (isRunning()) {
                 Logger::getInstance().log("Process " + name + " started successfully");
-                stopAutoRestart = false;
+                {
+                    safeSetStopAutoRestart(false);
+                    stopAutoRestart = false;
+                }
                 break;
             }
             Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + name);
@@ -247,7 +250,7 @@ void Process::handleChildExit(pid_t pid, int status) {
         Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
     }
 
-    if (stopAutoRestart) return;
+    if (safeGetStopAutoRestart() == true) return;
 
     if (autoRestart == "always") {
         Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
@@ -268,7 +271,7 @@ void Process::stop() {
         return;
     }
 
-    stopAutoRestart = true;
+    safeSetStopAutoRestart(true);
 
     std::vector<pid_t> pidsToErase;
 
@@ -286,7 +289,7 @@ void Process::stop() {
 
         cleanupStoppedProcesses(pidsToErase);
     }
-    stopAutoRestart = false;
+    safeSetStopAutoRestart(false);
     Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
@@ -459,8 +462,6 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
     }
 }
 
-
-
 // ___________________ CHECK LIFECYCLE ___________________
 bool Process::isRunning() const {
     return (getNumberOfInstances() == instances);
@@ -476,4 +477,15 @@ std::string Process::getStatus() const {
 
 std::string Process::getName() const {
     return name;
+}
+
+// ___________________ MUTEX ___________________
+bool Process::safeGetStopAutoRestart() {
+    std::lock_guard<std::mutex> guard(stopAutoRestartMutex);
+    return stopAutoRestart;
+}
+
+void Process::safeSetStopAutoRestart(bool newValue) {
+    std::lock_guard<std::mutex> guard(stopAutoRestartMutex);
+    stopAutoRestart = newValue;
 }

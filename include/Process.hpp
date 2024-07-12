@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <thread>
+#include <mutex>
 #include "colors.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
@@ -73,7 +74,13 @@ class Process {
         std::vector<pid_t> child_pids;
         bool monitorThreadRunning = false;
         json newConfigFile;
+
+        std::mutex stopAutoRestartMutex;
         bool stopAutoRestart;
+
+        // Mutex protection
+        bool safeGetStopAutoRestart();
+        void safeSetStopAutoRestart(bool newValue);
 
         [[nodiscard]] bool isRunning() const;
         void parseConfig(const json& config);
