@@ -216,6 +216,7 @@ void TaskMaster::updateExistingProcesses(const json& newConfig) {
 
             updateInstances(it->second, item.value().at("instances").get<int>());
         }
+        // TODO: if we add a new process will it start ?
         updatedProcesses.insert(item.key());
     }
 }
@@ -286,7 +287,6 @@ void TaskMaster::displayUsage() {
     Logger::getInstance().log("exit: Exit the taskmaster.");
     Logger::getInstance().log("");
 }
-
 
 // ___________________ DROP PRIVILEGES ___________________
 void TaskMaster::dropPrivilege() {

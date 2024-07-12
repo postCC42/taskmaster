@@ -92,8 +92,7 @@ class Process {
         ConfigChangesMap detectChanges(const json& newConfig);
         void applyChanges(const ConfigChangesMap& changes);
         bool changesRequireRestart(const ConfigChangesMap& changes);
-        void updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes);
-        void updateUmask(std::string newValue);
+        void updateUmask(const std::string &newValue);
 
         const std::map<std::string, int> signalMap = {
             {"SIGTERM", SIGTERM},

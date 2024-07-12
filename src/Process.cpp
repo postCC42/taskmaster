@@ -358,8 +358,6 @@ void Process::reloadConfig(const json& newConfig) {
             if (autoStart) {
                 start();
             }
-        } else {
-            updateDinamicallyWithoutRestarting(changes);
         }
     } else {
         Logger::getInstance().log("No changes detected for " + name);
@@ -367,29 +365,20 @@ void Process::reloadConfig(const json& newConfig) {
 }
 
 bool Process::changesRequireRestart(const ConfigChangesMap& changes) {
-    static const std::vector<std::string> restartKeys = {"command", "auto_start", "auto_restart", "working_directory", "stdout_log", "stderr_log", "environment_variables", "start_time", "stop_time", "restart_attempts"};
-
-    bool requiresRestart = false;
+    static const std::vector<std::string> restartKeys = {
+        "command", "auto_start", "auto_restart", "working_directory", "stdout_log", "stderr_log",
+        "environment_variables", "start_time", "stop_time", "restart_attempts", "umask"
+    };
 
     for (const auto& key : restartKeys) {
         if (changes.find(key) != changes.end()) {
-            requiresRestart = true;
-            break;
+            return true;
         }
     }
-
-    return requiresRestart;
+    return false;
 }
 
-void Process::updateDinamicallyWithoutRestarting(const ConfigChangesMap& changes) {
-    for (const auto& change : changes) {
-        if (change.first == "umask") {
-            updateUmask(change.second);
-        }
-    }
-}
-
-void Process::updateUmask(std::string newValue) {
+void Process::updateUmask(const std::string &newValue) {
     std::cout << "Updating umask to: " << newValue << std::endl;
     if (umaskInt != -1) {
         ::umask(umaskInt);
@@ -439,7 +428,8 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
             restartAttempts = std::stoi(value);
         } else if (key == "stop_signal") {
             stopSignal = signalMap.at(value);
-        } else if (key == "expected_exit_codes") {   
+        } else if (key == "expected_exit_codes") {
+            // TODO: test
             // Already handled
         } else if (key == "working_directory") {
             workingDirectory = value;
