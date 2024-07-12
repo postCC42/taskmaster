@@ -17,11 +17,11 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include "colors.hpp"
 #include "Logger.hpp"
 #include "Utils.hpp"
 #include "ConfigManager.hpp"
-// #include <atomic> // thread safe
 
 
 using json = nlohmann::json;
@@ -37,7 +37,7 @@ class Process {
         void stop();
         [[nodiscard]] std::string getStatus() const;
         [[nodiscard]] std::string getName() const;
-        [[nodiscard]] int getNumberOfInstances() const;
+        [[nodiscard]] int getNumberOfInstances();
         [[nodiscard]] std::string getCommand() const { return command; }
         [[nodiscard]] int getInstances() const { return instances; }
         [[nodiscard]] bool getAutoStart() const { return autoStart; }
@@ -82,24 +82,20 @@ class Process {
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
         std::vector<pid_t> childPids;
-        bool monitorThreadRunning = false;
+        std::atomic<bool> monitorThreadRunning{false};
         json newConfigFile;
-        std::thread monitorThread;
         std::mutex childPidsMutex;
-        std::mutex monitorThreadRunningMutex;
-        std::mutex stopAutoRestartMutex;
-        bool stopAutoRestart;
+        std::atomic<bool> stopAutoRestart{false};
+        std::thread thread;
+        std::atomic<bool> stopRequested{false};
 
         // Mutex protection
-        bool safeGetStopAutoRestart();
-        void safeSetStopAutoRestart(bool newValue);
-        bool safeGetMonitorThreadRunning();
-        void safeSetMonitorThreadRunning(bool newValue);
         void safeEraseFromChildPids(std::vector<pid_t>::iterator it);
         bool safeChildPidsIsEmpty();
         std::vector<pid_t> safeGetChildPidsCopy();
+        void stopThread();
 
-        [[nodiscard]] bool isRunning() const;
+        [[nodiscard]] bool isRunning();
         void parseConfig(const json& config);
         void setUpEnvironment();
         int getRunningChildCount();

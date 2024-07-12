@@ -71,7 +71,7 @@ Process::Process(Process&& other) noexcept
       environmentVariables(std::move(other.environmentVariables)),
       childPids(std::move(other.childPids)),
       newConfigFile(std::move(other.newConfigFile)),
-      stopAutoRestart(other.stopAutoRestart) {
+      stopAutoRestart(other.stopAutoRestart.load()) {
 }
 
 Process& Process::operator=(Process&& other) noexcept {
@@ -93,7 +93,7 @@ Process& Process::operator=(Process&& other) noexcept {
         environmentVariables = std::move(other.environmentVariables);
         childPids = std::move(other.childPids);
         newConfigFile = std::move(other.newConfigFile);
-        stopAutoRestart = other.stopAutoRestart;
+        stopAutoRestart.store(other.stopAutoRestart.load());
     }
     return *this;
 }
@@ -105,13 +105,8 @@ Process::Process(const std::string& name, const json& config) : name(name), inst
 }
 
 Process::~Process() {
-    safeSetStopAutoRestart(true); // Assuming this flag or a similar mechanism can be used to signal threads to exit
-    if (monitorThread.joinable()) {
-        monitorThread.join();
-    }
-    safeSetMonitorThreadRunning(false);
+    stopThread();
 }
-
 
 void Process::parseConfig(const json& config) {
     command = config.at("command").get<std::string>();
@@ -163,7 +158,7 @@ void Process::start() {
     }
     Logger::getInstance().log("Starting " + name);
 
-    safeSetStopAutoRestart(true);
+    stopAutoRestart.store(true);
     int attempts = 0;
     constexpr int oneSecond = 1000000;
     const int totalSleepTime = startTime * oneSecond;
@@ -180,10 +175,7 @@ void Process::start() {
 
             if (isRunning()) {
                 Logger::getInstance().log("Process " + name + " started successfully");
-                {
-                    safeSetStopAutoRestart(false);
-                    stopAutoRestart = false;
-                }
+                stopAutoRestart.store(false);
                 break;
             }
             Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + name);
@@ -212,14 +204,18 @@ void Process::startChildProcessAndMonitor() {
         } else {
             Logger::getInstance().log(
                 name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
-            childPids.push_back(child_pid);
+            {
+                std::lock_guard<std::mutex> guard(childPidsMutex);
+                childPids.push_back(child_pid);
+            }
         }
     }
 
     // TODO: test if this works when reloading
-    if (safeGetMonitorThreadRunning() == false) {
-        monitorThread =  std::thread(&Process::monitorChildProcesses, this);
-        safeSetMonitorThreadRunning(true);
+    if (monitorThreadRunning.load() == false) {
+        std::thread monitorThread(&Process::monitorChildProcesses, this);
+        monitorThread.detach();
+        monitorThreadRunning.store(true);
     }
 }
 
@@ -265,7 +261,7 @@ void Process::runChildProcess() const {
 }
 
 void Process::monitorChildProcesses() {
-    while (true) {
+    while (!stopRequested.load()) {
         for (auto it = childPids.begin(); it != childPids.end();) {
             int status;
             pid_t pid = *it;
@@ -284,7 +280,7 @@ void Process::monitorChildProcesses() {
         }
         usleep(100000);
     }
-    safeSetMonitorThreadRunning(false);
+    monitorThreadRunning.store(false);
 }
 
 void Process::handleChildExit(pid_t pid, int status) {
@@ -302,7 +298,7 @@ void Process::handleChildExit(pid_t pid, int status) {
         Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
     }
 
-    if (safeGetStopAutoRestart() == true) return;
+    if (stopAutoRestart.load() == true) return;
 
     if (autoRestart == "always") {
         Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
@@ -319,11 +315,13 @@ void Process::handleChildExit(pid_t pid, int status) {
 
 // ___________________ STOP AND SYNCH ___________________
 void Process::stop() {
+    std::cout << "Running child count: " << getRunningChildCount() << std::endl;
     if (getRunningChildCount() == 0) {
         return;
     }
 
-    safeSetStopAutoRestart(true);
+    stopAutoRestart.store(false);
+    stopThread();
 
     std::vector<pid_t> pidsToErase;
 
@@ -341,7 +339,7 @@ void Process::stop() {
 
         cleanupStoppedProcesses(pidsToErase);
     }
-    safeSetStopAutoRestart(false);
+    stopAutoRestart.store(false);
     Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
@@ -362,7 +360,7 @@ bool Process::stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase) {
                 return true;
             } 
         }
-        usleep(100000);
+        // usleep(100000);
     }
 
     return false;
@@ -516,11 +514,12 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
 }
 
 // ___________________ CHECK LIFECYCLE ___________________
-bool Process::isRunning() const {
-    return (getNumberOfInstances() == instances);
+bool Process::isRunning() {
+    return getNumberOfInstances() == instances;
 }
 
-int Process::getNumberOfInstances() const {
+int Process::getNumberOfInstances() {
+    std::lock_guard<std::mutex> guard(childPidsMutex);
     return static_cast<int>(childPids.size());
 }
 
@@ -533,26 +532,6 @@ std::string Process::getName() const {
 }
 
 // ___________________ MUTEX ___________________
-bool Process::safeGetStopAutoRestart() {
-    std::lock_guard<std::mutex> guard(stopAutoRestartMutex);
-    return stopAutoRestart;
-}
-
-void Process::safeSetStopAutoRestart(bool newValue) {
-    std::lock_guard<std::mutex> guard(stopAutoRestartMutex);
-    stopAutoRestart = newValue;
-}
-
-bool Process::safeGetMonitorThreadRunning() {
-    std::lock_guard<std::mutex> guard(monitorThreadRunningMutex);
-    return monitorThreadRunning;
-}
-
-void Process::safeSetMonitorThreadRunning(bool newValue) {
-    std::lock_guard<std::mutex> guard(monitorThreadRunningMutex);
-    monitorThreadRunning = newValue;
-}
-
 void Process::safeEraseFromChildPids(std::vector<pid_t>::iterator it) {
     std::lock_guard<std::mutex> guard(childPidsMutex);
     childPids.erase(it);
@@ -567,4 +546,14 @@ std::vector<pid_t> Process::safeGetChildPidsCopy() {
     std::lock_guard<std::mutex> guard(childPidsMutex);
     std::vector<pid_t> copy = childPids;
     return copy;
+}
+
+void Process::stopThread() {
+    stopRequested.store(true);
+    while (monitorThreadRunning.load() != false) {
+        usleep(100000);
+    }
+    if (thread.joinable()) {
+        thread.join();
+    }
 }
