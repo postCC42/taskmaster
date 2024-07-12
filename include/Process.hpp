@@ -32,6 +32,7 @@ class Process {
 
     public:
         explicit Process(const std::string& name, const json& config);
+        ~Process();
         void start();
         void stop();
         [[nodiscard]] std::string getStatus() const;
@@ -80,16 +81,23 @@ class Process {
         std::string stdoutLog;
         std::string stderrLog;
         std::map<std::string, std::string> environmentVariables; // each key unique and quick access to values
-        std::vector<pid_t> child_pids;
+        std::vector<pid_t> childPids;
         bool monitorThreadRunning = false;
         json newConfigFile;
-
+        std::thread monitorThread;
+        std::mutex childPidsMutex;
+        std::mutex monitorThreadRunningMutex;
         std::mutex stopAutoRestartMutex;
         bool stopAutoRestart;
 
         // Mutex protection
         bool safeGetStopAutoRestart();
         void safeSetStopAutoRestart(bool newValue);
+        bool safeGetMonitorThreadRunning();
+        void safeSetMonitorThreadRunning(bool newValue);
+        void safeEraseFromChildPids(std::vector<pid_t>::iterator it);
+        bool safeChildPidsIsEmpty();
+        std::vector<pid_t> safeGetChildPidsCopy();
 
         [[nodiscard]] bool isRunning() const;
         void parseConfig(const json& config);
