@@ -73,7 +73,7 @@ class Process {
         std::vector<pid_t> child_pids;
         bool monitorThreadRunning = false;
         json newConfigFile;
-        bool userStopped;        
+        bool stopAutoRestart;
 
         [[nodiscard]] bool isRunning() const;
         void parseConfig(const json& config);

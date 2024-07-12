@@ -109,13 +109,24 @@ void Process::start() {
     }
     Logger::getInstance().log("Starting " + name);
 
+    stopAutoRestart = true;
     int attempts = 0;
+    constexpr int oneSecond = 1000000;
+    const int totalSleepTime = startTime * oneSecond;
+    const int intervalsNeeded = totalSleepTime / oneSecond;
     do {
         try {
             startChildProcessAndMonitor();
-            usleep(startTime * 1000000);
+            for (int i = 0; i < intervalsNeeded; ++i) {
+                usleep(oneSecond);
+                if (isRunning()) {
+                    break;
+                }
+            }
+
             if (isRunning()) {
                 Logger::getInstance().log("Process " + name + " started successfully");
+                stopAutoRestart = false;
                 break;
             }
             Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + name);
@@ -129,7 +140,7 @@ void Process::start() {
             break;
         }
         attempts++;
-    } while (attempts <= restartAttempts);
+    } while (attempts < restartAttempts);
 }
 
 void Process::startChildProcessAndMonitor() {
@@ -199,17 +210,18 @@ void Process::runChildProcess() const {
 
 void Process::monitorChildProcesses() {
     while (true) {
-        int status;
-
-        pid_t pid = waitpid(-1, &status, WNOHANG);
-        if (pid > 0) {
-            handleChildExit(pid, status);
-        } else if (pid == -1) {
-            if (errno == ECHILD) {
-                Logger::getInstance().log("No more child processes to monitor.");
-                break;
+        for (auto it = child_pids.begin(); it != child_pids.end();) {
+            int status;
+            pid_t pid = *it;
+            if (waitpid(pid, &status, WNOHANG) > 0) {
+                handleChildExit(pid, status);
+                child_pids.erase(it);
+            } else if (pid == -1) {
+                // TODO: how to manage this ?
+                Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
+            } else {
+                ++it;
             }
-            Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
         }
         if (child_pids.empty()) {
             break;
@@ -217,33 +229,35 @@ void Process::monitorChildProcesses() {
         usleep(100000);
     }
     monitorThreadRunning = false;
+    std::cout << "End of monitoring for " << name << std::endl;
 }
 
 void Process::handleChildExit(pid_t pid, int status) {
-    auto it = std::find(child_pids.begin(), child_pids.end(), pid);
-    if (it != child_pids.end()) {
-        child_pids.erase(it);
-        int exitStatus;
-        if (WIFEXITED(status)) {
-            exitStatus = WEXITSTATUS(status);
-            Logger::getInstance().log("Child process " + std::to_string(pid) + " exited with status " + std::to_string(exitStatus));
-        } else if (WIFSIGNALED(status)) {
-            exitStatus = WTERMSIG(status);
-            Logger::getInstance().logError("Child process " + std::to_string(pid) + " terminated by signal " + std::to_string(WTERMSIG(status)));
-        } else {
-            exitStatus = -1;
-            Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
-        }
-        if (autoRestart == "always" && !userStopped) {
-            Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
+    int exitStatus;
+    if (WIFEXITED(status)) {
+        exitStatus = WEXITSTATUS(status);
+        Logger::getInstance().log(
+            "Child process " + std::to_string(pid) + " exited with status " + std::to_string(exitStatus));
+    } else if (WIFSIGNALED(status)) {
+        exitStatus = WTERMSIG(status);
+        Logger::getInstance().logError(
+            "Child process " + std::to_string(pid) + " terminated by signal " + std::to_string(WTERMSIG(status)));
+    } else {
+        exitStatus = -1;
+        Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
+    }
+
+    if (stopAutoRestart) return;
+
+    if (autoRestart == "always") {
+        Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
+        this->start();
+    } else if (autoRestart == "unexpected") {
+        if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
+            Logger::getInstance().logError(
+                "Child process " + std::to_string(pid) + " exited with unexpected status " +
+                std::to_string(exitStatus) + ". Considering restart.");
             this->start();
-        } else if (autoRestart == "unexpected") {
-            if (!userStopped && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
-                Logger::getInstance().logError(
-                    "Child process " + std::to_string(pid) + " exited with unexpected status " +
-                    std::to_string(exitStatus) + ". Considering restart.");
-                this->start();
-            }
         }
     }
 }
@@ -254,7 +268,7 @@ void Process::stop() {
         return;
     }
 
-    userStopped = true;
+    stopAutoRestart = true;
 
     std::vector<pid_t> pidsToErase;
 
@@ -272,7 +286,7 @@ void Process::stop() {
 
         cleanupStoppedProcesses(pidsToErase);
     }
-    userStopped = false; 
+    stopAutoRestart = false;
     Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
@@ -353,7 +367,7 @@ void Process::reloadConfig(const json& newConfig) {
         applyChanges(changes);
         if (changesRequireRestart(changes)) {
             Logger::getInstance().log("Some changes require a restart for process: " + name);
-            userStopped = true;
+            stopAutoRestart = true;
             stop();
             if (autoStart) {
                 start();
