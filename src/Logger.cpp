@@ -10,7 +10,7 @@ Logger& Logger::getInstance() {
     return *instance;
 }
 
-void Logger::initialize(const bool logToFile, const std::string& logFilePath) {
+void Logger::initialize(bool logToFile, const std::string& logFilePath) {
     if (logToFile) {
         logFile.open(logFilePath, std::ios::out | std::ios::app);
         if (!logFile.is_open()) {
@@ -28,6 +28,7 @@ Logger::~Logger() {
 
 void Logger::log(const std::string& message) {
     std::cout << message << std::endl;
+    std::lock_guard<std::mutex> guard(logMutex);
     if (logFile.is_open()) {
         logFile << message << std::endl;
     }
@@ -35,12 +36,14 @@ void Logger::log(const std::string& message) {
 
 void Logger::logError(const std::string& message) {
     std::cerr << message << std::endl;
+    std::lock_guard<std::mutex> guard(logMutex);
     if (logFile.is_open()) {
         logFile << "[ERROR] " << message << std::endl;
     }
 }
 
 void Logger::logToFile(const std::string& message) {
+    std::lock_guard<std::mutex> guard(logMutex);
     if (logFile.is_open()) {
         logFile << message << std::endl;
     }
