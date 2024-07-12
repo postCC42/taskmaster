@@ -111,11 +111,19 @@ void Process::start() {
 
     stopAutoRestart = true;
     int attempts = 0;
+    constexpr int oneSecond = 1000000;
+    const int totalSleepTime = startTime * oneSecond;
+    const int intervalsNeeded = totalSleepTime / oneSecond;
     do {
         try {
             startChildProcessAndMonitor();
-            // TODO: should split the sleep time into smaller intervals
-            usleep(startTime * 1000000);
+            for (int i = 0; i < intervalsNeeded; ++i) {
+                usleep(oneSecond);
+                if (isRunning()) {
+                    break;
+                }
+            }
+
             if (isRunning()) {
                 Logger::getInstance().log("Process " + name + " started successfully");
                 stopAutoRestart = false;
