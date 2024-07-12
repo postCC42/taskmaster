@@ -53,6 +53,53 @@ ____ Process Management Class ____
 
 #include "Process.hpp"
 
+Process::Process(Process&& other) noexcept
+    : name(std::move(other.name)),
+      command(std::move(other.command)),
+      instances(other.instances),
+      autoStart(other.autoStart),
+      autoRestart(std::move(other.autoRestart)),
+      startTime(other.startTime),
+      stopTime(other.stopTime),
+      restartAttempts(other.restartAttempts),
+      stopSignal(other.stopSignal),
+      expectedExitCodes(std::move(other.expectedExitCodes)),
+      workingDirectory(std::move(other.workingDirectory)),
+      umaskInt(other.umaskInt),
+      stdoutLog(std::move(other.stdoutLog)),
+      stderrLog(std::move(other.stderrLog)),
+      environmentVariables(std::move(other.environmentVariables)),
+      child_pids(std::move(other.child_pids)),
+      monitorThreadRunning(other.monitorThreadRunning),
+      newConfigFile(std::move(other.newConfigFile)),
+      stopAutoRestart(other.stopAutoRestart) {
+}
+
+Process& Process::operator=(Process&& other) noexcept {
+    if (this != &other) {
+        name = std::move(other.name);
+        command = std::move(other.command);
+        instances = other.instances;
+        autoStart = other.autoStart;
+        autoRestart = std::move(other.autoRestart);
+        startTime = other.startTime;
+        stopTime = other.stopTime;
+        restartAttempts = other.restartAttempts;
+        stopSignal = other.stopSignal;
+        expectedExitCodes = std::move(other.expectedExitCodes);
+        workingDirectory = std::move(other.workingDirectory);
+        umaskInt = other.umaskInt;
+        stdoutLog = std::move(other.stdoutLog);
+        stderrLog = std::move(other.stderrLog);
+        environmentVariables = std::move(other.environmentVariables);
+        child_pids = std::move(other.child_pids);
+        monitorThreadRunning = other.monitorThreadRunning;
+        newConfigFile = std::move(other.newConfigFile);
+        stopAutoRestart = other.stopAutoRestart;
+    }
+    return *this;
+}
+
 
 // ___________________ INIT AND PARSE ___________________
 Process::Process(const std::string& name, const json& config) : name(name), instances(0) {

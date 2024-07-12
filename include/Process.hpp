@@ -55,6 +55,15 @@ class Process {
         void reloadConfig(const json& newConfig);
         void stopInstance();
 
+        // Delete copy constructor and copy assignment operator
+        Process(const Process&) = delete;
+        Process& operator=(const Process&) = delete;
+
+        // Implement move constructor
+        Process(Process&& other) noexcept;
+        Process& operator=(Process&& other) noexcept;
+
+
     private:
         std::string name;
         std::string command;
