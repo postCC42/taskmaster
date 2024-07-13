@@ -269,17 +269,20 @@ void Process::runChildProcess() const {
 
 void Process::monitorChildProcesses() {
     while (!stopRequested.load()) {
-        for (auto it = childPids.begin(); it != childPids.end() && stopRequested.load() == false;) {
-            int status;
-            pid_t pid = *it;
-            if (waitpid(pid, &status, WNOHANG) > 0) {
-                handleChildExit(pid, status);
-                safeEraseFromChildPids(it);
-            } else if (pid == -1) {
-                // TODO: how to manage this ?
-                Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
-            } else {
-                ++it;
+        std::vector<pid_t>::iterator it;
+        {
+            std::lock_guard<std::mutex> guard(childPidsMutex);
+            for (it = childPids.begin(); it != childPids.end() && stopRequested.load() == false;) {
+                int status;
+                pid_t pid = *it;
+                if (waitpid(pid, &status, WNOHANG) > 0) {
+                    handleChildExit(pid, status);
+                    it = safeEraseFromChildPids(it);
+                } else if (pid == -1) {
+                    Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
+                } else {
+                    ++it;
+                }
             }
         }
         if (safeChildPidsIsEmpty()) {
@@ -536,9 +539,10 @@ std::string Process::getName() const {
 }
 
 // ___________________ MUTEX ___________________
-void Process::safeEraseFromChildPids(std::vector<pid_t>::iterator it) {
-    std::lock_guard<std::mutex> guard(childPidsMutex);
-    childPids.erase(it);
+std::vector<pid_t>::iterator Process::safeEraseFromChildPids(std::vector<pid_t>::iterator it) {
+    // std::lock_guard<std::mutex> guard(childPidsMutex);
+    it = childPids.erase(it);
+    return it;
 }
 
 bool Process::safeChildPidsIsEmpty() {
