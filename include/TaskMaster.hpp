@@ -11,8 +11,7 @@
 #include "colors.hpp"
 #include <set>
 #include <unistd.h> // for setuid() and setgid()
-#include <readline/readline.h>
-#include <readline/history.h>
+#include "poll.h"
 
 class Process;
 using json = nlohmann::json;
@@ -28,6 +27,8 @@ class TaskMaster {
 		static void removeOldProcesses(const json& newConfig);
 		static void updateInstances(Process& process, int newInstances);
 
+		static bool stopTaskmasterTriggered;
+		static bool reloadConfigTriggered;
 	private:
 		static std::string configFilePath;
 		bool loggingEnabled;

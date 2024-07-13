@@ -44,6 +44,8 @@ ____ TaskMaster Class ____
 
 std::map<std::string, Process> TaskMaster::processes;
 std::string TaskMaster::configFilePath;
+bool TaskMaster::stopTaskmasterTriggered = false;
+bool TaskMaster::reloadConfigTriggered = false;
 
 // ___________________ INIT AND CONFIG PARSE ___________________
 TaskMaster::TaskMaster(const std::string& configFilePath) {
@@ -78,6 +80,7 @@ void TaskMaster::initializeProcesses(const json& config) {
         startInitialProcesses();
         signal(SIGINT, Utils::signalHandler);
         signal(SIGQUIT, Utils::signalHandler);
+        signal(SIGTERM, Utils::signalHandler);
         signal(SIGHUP, Utils::signalHandler);
     } catch (const std::exception& ex) {
         Logger::getInstance().logError("Error initializing processes: " + std::string(ex.what()));
@@ -110,12 +113,31 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 
 // ___________________ COMMAND HANDLING ___________________
 void TaskMaster::commandLoop() {
+
+    struct pollfd pfd = {.fd = 0, .events = POLLIN, .revents = 0};
     std::string command;
-    while (std::cout << GREEN << "taskmaster> " << RESET && std::getline(std::cin, command) && command != "exit") {
-        if (std::cin.eof()) {
+    std::cout << GREEN << "taskmaster> " << RESET << std::flush;
+    while (true) {
+        int pollRet = poll(&pfd, 1, 0);
+        if (reloadConfigTriggered) {
+            reloadConfig();
+            reloadConfigTriggered = false;
+            std::cout << GREEN << "taskmaster> " << RESET << std::flush;
+        } else if (stopTaskmasterTriggered) {
             break;
+        } else if (pollRet & POLLIN){
+            std::getline(std::cin, command);
+            if (std::cin.eof()) {
+                std::cout << "cin eof" << std::endl;
+                break;
+            }
+            if (command == "exit") {
+                break;
+            }
+            handleCommand(command);
+            command.clear();
+            std::cout << GREEN << "taskmaster> " << RESET << std::flush;
         }
-        handleCommand(command);
     }
 }
 
@@ -193,6 +215,7 @@ void TaskMaster::restartProcess(const std::string &processName) {
 }
 
 void TaskMaster::reloadConfig() {
+    Logger::getInstance().log("\nSIGHUP signal received. Reloading configuration...");
     json newConfig;
     try {
         newConfig = ConfigManager::parseConfig(configFilePath);
