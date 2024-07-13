@@ -319,7 +319,7 @@ void Process::handleChildExit(pid_t pid, int status) {
         Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
         this->start();
     } else if (autoRestart == "unexpected") {
-        if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
+        if (exitStatus != 0 && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
             Logger::getInstance().logError(
                 "Child process " + std::to_string(pid) + " exited with unexpected status " +
                 std::to_string(exitStatus) + ". Considering restart.");

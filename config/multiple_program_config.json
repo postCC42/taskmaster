@@ -9,7 +9,7 @@
             "stop_time": 4,
             "restart_attempts": 2,
             "stop_signal": "SIGTERM",
-            "expected_exit_codes": [14],
+            "expected_exit_codes": [10],
             "working_directory": "/tmp/",
             "umask": -2,
             "stdout_log": "/tmp/system_monitor_output.log",
@@ -19,7 +19,7 @@
         "server": {
             "command": "/usr/bin/python3 server.py",
             "instances": 2,
-            "auto_start": false,
+            "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
             "stop_time": 5,
