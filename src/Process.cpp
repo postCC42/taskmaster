@@ -164,6 +164,7 @@ void Process::start() {
     }
     Logger::getInstance().log("Starting " + name);
 
+    stopRequested.store(false);
     stopAutoRestart.store(true);
     int attempts = 0;
     constexpr int oneSecond = 1000000;
