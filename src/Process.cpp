@@ -421,7 +421,6 @@ void Process::reloadConfig(const json& newConfig) {
         applyChanges(changes);
         if (changesRequireRestart(changes)) {
             Logger::getInstance().log("Some changes require a restart for process: " + name);
-            stopAutoRestart = true;
             stop();
             if (autoStart) {
                 start();
