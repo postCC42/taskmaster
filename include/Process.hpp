@@ -90,7 +90,8 @@ class Process {
         std::atomic<bool> stopRequested{false};
 
         // Mutex protection
-        void safeEraseFromChildPids(std::vector<pid_t>::iterator it);
+        // void safeEraseFromChildPids(std::vector<pid_t>::iterator it);
+        std::vector<pid_t>::iterator safeEraseFromChildPids(std::vector<pid_t>::iterator it);
         bool safeChildPidsIsEmpty();
         std::vector<pid_t> safeGetChildPidsCopy();
         void stopThread();
