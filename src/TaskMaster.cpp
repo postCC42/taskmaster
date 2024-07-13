@@ -113,7 +113,6 @@ Process* TaskMaster::findProcess(const std::string& processName) {
 
 // ___________________ COMMAND HANDLING ___________________
 void TaskMaster::commandLoop() {
-
     struct pollfd pfd = {.fd = 0, .events = POLLIN, .revents = 0};
     std::string command;
     std::cout << GREEN << "taskmaster> " << RESET << std::flush;
@@ -239,7 +238,6 @@ void TaskMaster::updateExistingProcesses(const json& newConfig) {
 
             updateInstances(it->second, item.value().at("instances").get<int>());
         }
-        // TODO: if we add a new process will it start ?
         updatedProcesses.insert(item.key());
     }
 }
