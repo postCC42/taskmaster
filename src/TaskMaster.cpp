@@ -302,7 +302,7 @@ void TaskMaster::displayUsage() {
     Logger::getInstance().log("Usage:");
     Logger::getInstance().log("");
     Logger::getInstance().log("Commands:");
-    Logger::getInstance().log("start <program_name>: Start a program by name. (For programs with start_time = 0, not started at taskmaster launch)");
+    Logger::getInstance().log("start <program_name>: Start a program by name.");
     Logger::getInstance().log("stop <program_name>: Stop a running program by name.");
     Logger::getInstance().log("restart <program_name>: Restart a program by name.");
     Logger::getInstance().log("reload: Reload the configuration without stopping the program.");
