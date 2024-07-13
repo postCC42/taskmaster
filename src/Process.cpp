@@ -131,6 +131,12 @@ void Process::parseConfig(const json& config) {
     stopSignal = signalMap.at(stopSignalStr);
 
     expectedExitCodes = config.at("expected_exit_codes").get<std::vector<int>>();
+    for (auto code: expectedExitCodes) {
+        if (code < 0 || code > 255) {
+            throw std::runtime_error(name + ": Invalid exit code: " + std::to_string(code));
+        }
+    } 
+
     workingDirectory = config.at("working_directory").get<std::string>();
     umaskInt = config.at("umask").get<int>();
     stdoutLog = config.at("stdout_log").get<std::string>();
@@ -263,7 +269,7 @@ void Process::runChildProcess() const {
 
 void Process::monitorChildProcesses() {
     while (!stopRequested.load()) {
-        for (auto it = childPids.begin(); it != childPids.end();) {
+        for (auto it = childPids.begin(); it != childPids.end() && stopRequested.load() == false;) {
             int status;
             pid_t pid = *it;
             if (waitpid(pid, &status, WNOHANG) > 0) {
@@ -286,6 +292,9 @@ void Process::monitorChildProcesses() {
 
 void Process::handleChildExit(pid_t pid, int status) {
     int exitStatus;
+    if (stopRequested.load() == true) {
+        return;
+    }
     if (WIFEXITED(status)) {
         exitStatus = WEXITSTATUS(status);
         Logger::getInstance().log(
@@ -299,6 +308,7 @@ void Process::handleChildExit(pid_t pid, int status) {
         Logger::getInstance().logError("Child process " + std::to_string(pid) + " exited with unknown status");
     }
 
+    usleep(1000000);
     if (stopAutoRestart.load() == true) return;
 
     if (autoRestart == "always") {
@@ -320,9 +330,8 @@ void Process::stop() {
         return;
     }
 
-    stopAutoRestart.store(false);
+    stopAutoRestart.store(true);
     stopThread();
-
     std::vector<pid_t> pidsToErase;
 
     while (!safeChildPidsIsEmpty()) {
@@ -339,7 +348,6 @@ void Process::stop() {
 
         cleanupStoppedProcesses(pidsToErase);
     }
-    stopAutoRestart.store(false);
     Logger::getInstance().log("All instances of " + name + " have been successfully stopped.");
 }
 
@@ -495,9 +503,6 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
             restartAttempts = std::stoi(value);
         } else if (key == "stop_signal") {
             stopSignal = signalMap.at(value);
-        } else if (key == "expected_exit_codes") {
-            // TODO: test
-            // Already handled
         } else if (key == "working_directory") {
             workingDirectory = value;
         } else if (key == "umask") {
