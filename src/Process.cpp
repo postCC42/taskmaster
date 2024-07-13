@@ -178,7 +178,7 @@ void Process::start() {
                     break;
                 }
             }
-
+            usleep(oneSecond);
             if (isRunning()) {
                 Logger::getInstance().log("Process " + name + " started successfully");
                 stopAutoRestart.store(false);
