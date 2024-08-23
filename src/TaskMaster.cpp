@@ -68,6 +68,9 @@ TaskMaster::~TaskMaster() {
 void TaskMaster::initializeLogger(const json& config) {
     const bool loggingEnabled = config.at("logging_enabled").get<bool>();
     const std::string logFilePath = config.at("log_file").get<std::string>();
+    if (Utils::checkFilePermissions(logFilePath) == false) {
+        throw std::runtime_error("Insufficient permissions to write to log file: " + logFilePath);
+    }
     Logger::getInstance().initialize(loggingEnabled, logFilePath);
 }
 
@@ -235,11 +238,8 @@ void TaskMaster::updateExistingProcesses(const json& newConfig) {
         auto it = processes.find(item.key());
         if (it != processes.end()) {
             it->second.reloadConfig(item.value());
-            Logger::getInstance().log("Process " + item.key() + " reloaded");
-
             updateInstances(it->second, item.value().at("instances").get<int>());
         }
-        // TODO: if we add a new process will it start ?
         updatedProcesses.insert(item.key());
     }
 }
