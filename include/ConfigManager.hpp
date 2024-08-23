@@ -6,6 +6,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "Process.hpp"
+#include "Utils.hpp"
 
 class Process;
 using json = nlohmann::json;

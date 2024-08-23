@@ -91,6 +91,11 @@ void ConfigManager::checkExpectedExitCodes(const json& newConfig, const Process&
         expectedExitCodes.clear();
         expectedExitCodes = newConfig.at("expected_exit_codes").get<std::vector<int>>();
         changes["expected_exit_codes"] = serializeVector(expectedExitCodes);
+        for (auto code: expectedExitCodes) {
+            if (code < 0 || code > 255) {
+                throw std::runtime_error(process.getName() + ": Invalid exit code: " + std::to_string(code));
+            }
+        }
     }
 }
 
@@ -109,12 +114,18 @@ void ConfigManager::checkUmask(const json& newConfig, const Process& process, Co
 void ConfigManager::checkStdoutLog(const json& newConfig, const Process& process, ConfigChangesMap& changes) {
     if (newConfig.at("stdout_log").get<std::string>() != process.getStdoutLog()) {
         changes["stdout_log"] = newConfig.at("stdout_log").get<std::string>();
+        if (Utils::checkFilePermissions(changes["stdout_log"]) == false) {
+            throw std::runtime_error(process.getName() + ": Invalid stdout log file: " + changes["stdout_log"]);
+        }
     }
 }
 
 void ConfigManager::checkStderrLog(const json& newConfig, const Process& process, ConfigChangesMap& changes) {
     if (newConfig.at("stderr_log").get<std::string>() != process.getStderrLog()) {
         changes["stderr_log"] = newConfig.at("stderr_log").get<std::string>();
+        if (Utils::checkFilePermissions(changes["stderr_log"]) == false) {
+            throw std::runtime_error(process.getName() + ": Invalid stderr log file: " + changes["stderr_log"]);
+        }
     }
 }
 

@@ -140,7 +140,13 @@ void Process::parseConfig(const json& config) {
     workingDirectory = config.at("working_directory").get<std::string>();
     umaskInt = config.at("umask").get<int>();
     stdoutLog = config.at("stdout_log").get<std::string>();
+    if (Utils::checkFilePermissions(stdoutLog) == false) {
+        throw std::runtime_error(name + ": Invalid stdout log file: " + stdoutLog);
+    }
     stderrLog = config.at("stderr_log").get<std::string>();
+    if (Utils::checkFilePermissions(stdoutLog) == false) {
+        throw std::runtime_error(name + ": Invalid stderr log file: " + stdoutLog);
+    }
     for (const auto& envVar : config.at("environment_variables")) {
         std::string envVarStr = envVar.get<std::string>();
         const auto delimiterPos = envVarStr.find('=');
