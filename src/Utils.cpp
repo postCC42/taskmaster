@@ -20,3 +20,22 @@ void Utils::signalHandler(int sig) {
         std::cout << "SIGINT signal received" << std::endl;
     }
 }
+
+bool Utils::checkFilePermissions(const std::string& filePath) {
+    std::filesystem::path path(filePath);
+
+    if (exists(path)) {
+        auto fileStatus = status(path);
+        return (fileStatus.permissions() & std::filesystem::perms::owner_write) != std::filesystem::perms::none;
+    }
+
+    std::filesystem::path parentPath = path.parent_path();
+
+    if (!exists(parentPath)) {
+        return false;
+    }
+
+    auto dirStatus = status(parentPath);
+
+    return (dirStatus.permissions() & std::filesystem::perms::owner_write) != std::filesystem::perms::none;
+}
