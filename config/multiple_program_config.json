@@ -2,7 +2,7 @@
     "programs": {
         "top": {
             "command": "/usr/bin/top -b",
-            "instances": 3,
+            "instances": 1,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 0,
@@ -11,7 +11,7 @@
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [10],
             "working_directory": "/tmp/",
-            "umask": -2,
+            "umask": 0,
             "stdout_log": "/tmp/system_monitor_output.log",
             "stderr_log": "/tmp/system_monitor_error.log",
             "environment_variables": []
@@ -27,7 +27,7 @@
             "stop_signal": "SIGTERM",
             "expected_exit_codes": [2, 3],
             "working_directory": ".",
-            "umask": -1,
+            "umask": 0,
             "stdout_log": "/tmp/web_server_output.log",
             "stderr_log": "/tmp/web_server_error.log",
             "environment_variables": [

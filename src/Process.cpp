@@ -256,8 +256,15 @@ void Process::runChildProcess() const {
     }
 
     // Redirect stdout and stderr
-    if (freopen(stdoutLog.c_str(), "a", stdout) == nullptr || freopen(stderrLog.c_str(), "a", stderr) == nullptr) {
-        perror("Failed to redirect stdout/stderr");
+    auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
+    if (outFile == nullptr) {
+        perror("Failed to redirect stdout");
+        _exit(EXIT_FAILURE);
+    }
+    auto errFile = freopen(stderrLog.c_str(), "a", stderr);
+    if (errFile == nullptr) {
+        fclose(outFile);
+        perror("Failed to redirect stderr");
         _exit(EXIT_FAILURE);
     }
 
