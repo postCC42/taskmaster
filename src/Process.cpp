@@ -228,7 +228,6 @@ void Process::startChildProcessAndMonitor() {
         }
     }
 
-    // TODO: test if this works when reloading
     if (monitorThreadRunning.load() == false) {
         std::thread monitorThread(&Process::monitorChildProcesses, this);
         monitorThread.detach();
@@ -339,6 +338,10 @@ void Process::handleChildExit(pid_t pid, int status) {
     usleep(1000000);
     if (stopAutoRestart.load() == true) return;
 
+
+    // FIX: infinite loop when autoRestart fails
+    // the solution would be to create another function explicitly for restarting the process
+    // and do not monitor the new process until the start time is passed and the process is started
     if (autoRestart == "always") {
         Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
         this->start();
