@@ -203,6 +203,10 @@ void Process::start() {
         }
         attempts++;
     } while (attempts < restartAttempts);
+
+    if (getNumberOfInstances() > 0) {
+        stopAutoRestart.store(false);
+    }
 }
 
 void Process::startChildProcessAndMonitor() {
