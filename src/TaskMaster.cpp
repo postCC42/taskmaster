@@ -226,6 +226,7 @@ void TaskMaster::reloadConfig() {
     catch (const std::exception &ex) {
         Logger::getInstance().logError("Error reloading configuration: " + std::string(ex.what()));
     }
+    Logger::getInstance().reloadConfig(newConfig.at("logging_enabled").get<bool>(), newConfig.at("log_file").get<std::string>());
     updateExistingProcesses(newConfig);
     addNewProcesses(newConfig);
     removeOldProcesses(newConfig);

@@ -2,6 +2,7 @@
 
 std::once_flag Logger::initInstanceFlag;
 std::unique_ptr<Logger> Logger::instance;
+std::string Logger::logFilePath;
 
 Logger& Logger::getInstance() {
     std::call_once(Logger::initInstanceFlag, []() {
@@ -12,11 +13,32 @@ Logger& Logger::getInstance() {
 
 void Logger::initialize(bool logToFile, const std::string& logFilePath) {
     if (logToFile) {
+        Logger::logFilePath = logFilePath;
         logFile.open(logFilePath, std::ios::out | std::ios::app);
         if (!logFile.is_open()) {
             throw std::runtime_error("Failed to open log file");
         }
         log("Logging to file: " + logFilePath);
+    }
+}
+
+void Logger::reloadConfig(bool logToFile, const std::string& logFilePath) {
+    if (logToFile) {
+        std::lock_guard<std::mutex> guard(logMutex);
+        if (logFile.is_open() && Logger::logFilePath == logFilePath) {
+            return;
+        }
+        if (logFile.is_open() == false || Logger::logFilePath != logFilePath) {
+            logFile.close();
+        }
+
+        Logger::logFilePath = logFilePath;
+        logFile.open(logFilePath, std::ios::out | std::ios::app);
+        if (!logFile.is_open()) {
+            throw std::runtime_error("Failed to open log file");
+        }
+    } else if (logFile.is_open()) {
+        logFile.close();
     }
 }
 
