@@ -533,14 +533,8 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "umask") {
             umaskInt = std::stoi(value);
         } else if (key == "stdout_log") {
-            // if (value == "discard" && value.empty() && !Utils::checkFilePermissions(value)) {
-            //     throw std::runtime_error(name + ": Invalid stdout log file: " + value);
-            // }
             stdoutLog = value;
         } else if (key == "stderr_log") {
-            // if (value == "discard" && value.empty() && !Utils::checkFilePermissions(value)) {
-            //     throw std::runtime_error(name + ": Invalid stderr log file: " + value);
-            // }
             stderrLog = value;
         } else if (key == "environment_variables") {
             environmentVariables = ConfigManager::deserializeEnvVars(value);
