@@ -237,9 +237,14 @@ void Process::startChildProcessAndMonitor() {
 }
 
 int Process::getRunningChildCount() {
+    std::vector<pid_t> pidsToCheck;
+    {
+        std::lock_guard<std::mutex> guard(childPidsMutex);
+        pidsToCheck = childPids;
+    }
+
     int runningChildCount = 0;
-    std::lock_guard<std::mutex> guard(childPidsMutex);
-    for (const pid_t& pid : childPids) {
+    for (const pid_t& pid : pidsToCheck) {
         if (kill(pid, 0) == 0) {
             runningChildCount++;
         } else if (errno != ESRCH) {
@@ -289,13 +294,15 @@ void Process::monitorChildProcesses() {
     while (!stopRequested.load()) {
         std::vector<pid_t>::iterator it;
         {
-            std::lock_guard<std::mutex> guard(childPidsMutex);
-            for (it = childPids.begin(); it != childPids.end() && stopRequested.load() == false;) {
+            std::unique_lock<std::mutex> guard(childPidsMutex);
+            for (it = childPids.begin(); it != childPids.end() && !stopRequested.load();) {
                 int status;
                 pid_t pid = *it;
                 if (waitpid(pid, &status, WNOHANG) > 0) {
-                    handleChildExit(pid, status);
+                    guard.unlock();
                     it = safeEraseFromChildPids(it);
+                    handleChildExit(pid, status);
+                    break;
                 } else if (pid == -1) {
                     Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
                 } else {
@@ -306,7 +313,7 @@ void Process::monitorChildProcesses() {
         if (safeChildPidsIsEmpty()) {
             break;
         }
-        usleep(100000);
+        usleep(1000000);
     }
     monitorThreadRunning.store(false);
 }
@@ -558,7 +565,7 @@ std::string Process::getName() const {
 
 // ___________________ MUTEX ___________________
 std::vector<pid_t>::iterator Process::safeEraseFromChildPids(std::vector<pid_t>::iterator it) {
-    // std::lock_guard<std::mutex> guard(childPidsMutex);
+    std::lock_guard<std::mutex> guard(childPidsMutex);
     it = childPids.erase(it);
     return it;
 }
