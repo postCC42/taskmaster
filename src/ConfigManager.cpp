@@ -114,7 +114,7 @@ void ConfigManager::checkUmask(const json& newConfig, const Process& process, Co
 void ConfigManager::checkStdoutLog(const json& newConfig, const Process& process, ConfigChangesMap& changes) {
     if (newConfig.at("stdout_log").get<std::string>() != process.getStdoutLog()) {
         changes["stdout_log"] = newConfig.at("stdout_log").get<std::string>();
-        if (Utils::checkFilePermissions(changes["stdout_log"]) == false) {
+        if (changes["stdout_log"] != "discard" && !changes["stdout_log"].empty() && Utils::checkFilePermissions(changes["stdout_log"]) == false) {
             throw std::runtime_error(process.getName() + ": Invalid stdout log file: " + changes["stdout_log"]);
         }
     }
@@ -123,7 +123,7 @@ void ConfigManager::checkStdoutLog(const json& newConfig, const Process& process
 void ConfigManager::checkStderrLog(const json& newConfig, const Process& process, ConfigChangesMap& changes) {
     if (newConfig.at("stderr_log").get<std::string>() != process.getStderrLog()) {
         changes["stderr_log"] = newConfig.at("stderr_log").get<std::string>();
-        if (Utils::checkFilePermissions(changes["stderr_log"]) == false) {
+        if (changes["stderr_log"] != "discard" && !changes["stderr_log"].empty() && Utils::checkFilePermissions(changes["stderr_log"]) == false) {
             throw std::runtime_error(process.getName() + ": Invalid stderr log file: " + changes["stderr_log"]);
         }
     }
