@@ -140,12 +140,12 @@ void Process::parseConfig(const json& config) {
     workingDirectory = config.at("working_directory").get<std::string>();
     umaskInt = config.at("umask").get<int>();
     stdoutLog = config.at("stdout_log").get<std::string>();
-    if (Utils::checkFilePermissions(stdoutLog) == false) {
+    if (stdoutLog != "discard" && !stdoutLog.empty() && Utils::checkFilePermissions(stdoutLog) == false) {
         throw std::runtime_error(name + ": Invalid stdout log file: " + stdoutLog);
     }
     stderrLog = config.at("stderr_log").get<std::string>();
-    if (Utils::checkFilePermissions(stdoutLog) == false) {
-        throw std::runtime_error(name + ": Invalid stderr log file: " + stdoutLog);
+    if (stderrLog != "discard" && !stderrLog.empty() && Utils::checkFilePermissions(stderrLog) == false) {
+        throw std::runtime_error(name + ": Invalid stderr log file: " + stderrLog);
     }
     for (const auto& envVar : config.at("environment_variables")) {
         std::string envVarStr = envVar.get<std::string>();
@@ -256,16 +256,25 @@ void Process::runChildProcess() const {
     }
 
     // Redirect stdout and stderr
-    auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
-    if (outFile == nullptr) {
-        perror("Failed to redirect stdout");
-        _exit(EXIT_FAILURE);
+    if (stdoutLog.empty() || stdoutLog == "discard") {
+        freopen("/dev/null", "w", stdout);
+    } else {
+        auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
+        if (outFile == nullptr) {
+            perror("Failed to redirect stdout");
+            _exit(EXIT_FAILURE);
+        }
     }
-    auto errFile = freopen(stderrLog.c_str(), "a", stderr);
-    if (errFile == nullptr) {
-        fclose(outFile);
-        perror("Failed to redirect stderr");
-        _exit(EXIT_FAILURE);
+
+    if (stderrLog.empty() || stderrLog == "discard") {
+            freopen("/dev/null", "w", stderr);
+    } else {
+        auto errFile = freopen(stderrLog.c_str(), "a", stderr);
+        if (errFile == nullptr) {
+            fclose(stdout);
+            perror("Failed to redirect stderr");
+            _exit(EXIT_FAILURE);
+        }            
     }
 
     const std::vector<std::string> args = Utils::split(command, ' ');
@@ -498,7 +507,6 @@ ConfigChangesMap Process::detectChanges(const json& newConfig) {
     return changes;
 }
 
-
 void Process::applyChanges(const ConfigChangesMap& changes) {
     for (const auto& change : changes) {
         const std::string& key = change.first;
@@ -525,8 +533,14 @@ void Process::applyChanges(const ConfigChangesMap& changes) {
         } else if (key == "umask") {
             umaskInt = std::stoi(value);
         } else if (key == "stdout_log") {
+            // if (value == "discard" && value.empty() && !Utils::checkFilePermissions(value)) {
+            //     throw std::runtime_error(name + ": Invalid stdout log file: " + value);
+            // }
             stdoutLog = value;
         } else if (key == "stderr_log") {
+            // if (value == "discard" && value.empty() && !Utils::checkFilePermissions(value)) {
+            //     throw std::runtime_error(name + ": Invalid stderr log file: " + value);
+            // }
             stderrLog = value;
         } else if (key == "environment_variables") {
             environmentVariables = ConfigManager::deserializeEnvVars(value);

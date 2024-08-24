@@ -12,13 +12,13 @@
             "expected_exit_codes": [10],
             "working_directory": "/tmp/",
             "umask": 0,
-            "stdout_log": "/tmp/system_monitor_output.log",
-            "stderr_log": "/tmp/system_monitor_error.log",
+            "stdout_log": "discard",
+            "stderr_log": "",
             "environment_variables": []
         },
         "server": {
             "command": "/usr/bin/python3 server.py",
-            "instances": 2,
+            "instances": 1,
             "auto_start": true,
             "auto_restart": "unexpected",
             "start_time": 1,
