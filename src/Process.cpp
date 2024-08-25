@@ -384,7 +384,6 @@ void Process::restartProcess() {
                     Logger::getInstance().log(
                         name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
                     {
-                        std::lock_guard<std::mutex> guard(childPidsMutex);
                         tempChildPids.push_back(child_pid);
                     }
                 }
@@ -405,6 +404,7 @@ void Process::restartProcess() {
                     Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
                 } else {
                     if (std::find(childPids.begin(), childPids.end(), *it) == childPids.end()) {
+                        std::lock_guard<std::mutex> guard(childPidsMutex);
                         childPids.push_back(*it);
                     }
                     it = tempChildPids.erase(it);
