@@ -1,0 +1,22 @@
+{
+    "programs": {
+        "tops": {
+            "command":  "/usr/bin/top -b",
+            "instances": 2,
+            "auto_start": true,
+            "auto_restart": "unexpected",
+            "start_time": 3,
+            "stop_time": 5,
+            "restart_attempts": 1,
+            "stop_signal": "SIGTERM",
+            "expected_exit_codes": [0],
+            "working_directory": "/tmp/",
+            "umask": -1,
+            "stdout_log": "/tmp/log_test",
+            "stderr_log": "/tmp/log_err_test",
+            "environment_variables": []
+        }
+    },
+    "logging_enabled": true,
+    "log_file": "./taskmaster.log"
+}
