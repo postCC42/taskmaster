@@ -313,7 +313,6 @@ void Process::monitorChildProcesses() {
 }
 
 void Process::handleChildExit(pid_t pid, int status) {
-    std::cout << "[" << stopAutoRestart.load() << "]" << std::endl;
     int exitStatus;
     if (stopRequested.load() == true) {
         return;
