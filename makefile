@@ -10,7 +10,7 @@ DEPS := $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.d)
 CXX_DEFS := NAME=\"$(NAME)\"
 
 CXX := g++
-CXX_FLAGS := -Wextra -Werror -Wall -std=c++17 -g3
+CXX_FLAGS := -Wextra -Werror -Wall -std=c++17 -g3 -fsanitize=address -O2
 CXX_LINKS := -L$(LIB_DIR)
 CXX_LIBS := 
 

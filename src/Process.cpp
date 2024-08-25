@@ -196,13 +196,12 @@ void Process::start() {
             Logger::getInstance().logError("Error starting program " + name + ": " + ex.what());
             stop();
         }
-        if (attempts == restartAttempts) {
-            Logger::getInstance().logError("Maximum restart attempts reached for " + name);
-            stop();
-            break;
-        }
         attempts++;
     } while (attempts < restartAttempts);
+
+    if (getNumberOfInstances() > 0) {
+        stopAutoRestart.store(false);
+    }
 }
 
 void Process::startChildProcessAndMonitor() {
@@ -224,7 +223,6 @@ void Process::startChildProcessAndMonitor() {
         }
     }
 
-    // TODO: test if this works when reloading
     if (monitorThreadRunning.load() == false) {
         std::thread monitorThread(&Process::monitorChildProcesses, this);
         monitorThread.detach();
@@ -233,9 +231,14 @@ void Process::startChildProcessAndMonitor() {
 }
 
 int Process::getRunningChildCount() {
+    std::vector<pid_t> pidsToCheck;
+    {
+        std::lock_guard<std::mutex> guard(childPidsMutex);
+        pidsToCheck = childPids;
+    }
+
     int runningChildCount = 0;
-    std::lock_guard<std::mutex> guard(childPidsMutex);
-    for (const pid_t& pid : childPids) {
+    for (const pid_t& pid : pidsToCheck) {
         if (kill(pid, 0) == 0) {
             runningChildCount++;
         } else if (errno != ESRCH) {
@@ -304,13 +307,15 @@ void Process::monitorChildProcesses() {
     while (!stopRequested.load()) {
         std::vector<pid_t>::iterator it;
         {
-            std::lock_guard<std::mutex> guard(childPidsMutex);
-            for (it = childPids.begin(); it != childPids.end() && stopRequested.load() == false;) {
+            std::unique_lock<std::mutex> guard(childPidsMutex);
+            for (it = childPids.begin(); it != childPids.end() && !stopRequested.load();) {
                 int status;
                 pid_t pid = *it;
                 if (waitpid(pid, &status, WNOHANG) > 0) {
-                    handleChildExit(pid, status);
+                    guard.unlock();
                     it = safeEraseFromChildPids(it);
+                    handleChildExit(pid, status);
+                    break;
                 } else if (pid == -1) {
                     Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
                 } else {
@@ -321,7 +326,7 @@ void Process::monitorChildProcesses() {
         if (safeChildPidsIsEmpty()) {
             break;
         }
-        usleep(100000);
+        usleep(1000000);
     }
     monitorThreadRunning.store(false);
 }
@@ -347,17 +352,90 @@ void Process::handleChildExit(pid_t pid, int status) {
     usleep(1000000);
     if (stopAutoRestart.load() == true) return;
 
+
+    // FIX: infinite loop when autoRestart fails
+    // the solution would be to create another function explicitly for restarting the process
+    // and do not monitor the new process until the start time is passed and the process is started
     if (autoRestart == "always") {
         Logger::getInstance().log("Restarting child process " + std::to_string(pid) + " as per configuration.");
-        this->start();
+        this->restartProcess();
     } else if (autoRestart == "unexpected") {
         if (exitStatus != 0 && std::find(expectedExitCodes.begin(), expectedExitCodes.end(), exitStatus) == expectedExitCodes.end()) {
             Logger::getInstance().logError(
                 "Child process " + std::to_string(pid) + " exited with unexpected status " +
                 std::to_string(exitStatus) + ". Considering restart.");
-            this->start();
+            this->restartProcess();
         }
     }
+}
+
+void Process::restartProcess() {
+    if (instances < 1) {
+        throw std::runtime_error("Invalid number of instances: " + std::to_string(instances));
+    }
+    Logger::getInstance().log("Starting " + name);
+
+    stopAutoRestart.store(true);
+    int attempts = 0;
+    constexpr int oneSecond = 1000000;
+    const int totalSleepTime = startTime * oneSecond;
+    std::vector<pid_t> tempChildPids;
+    do {
+        try {
+            for (int i = getRunningChildCount() + tempChildPids.size(); i < instances; ++i) {
+                pid_t child_pid = fork();
+                if (child_pid < 0) {
+                    throw std::runtime_error("Fork failure for instance " + std::to_string(i));
+                }
+                if (child_pid == 0) {
+                    setUpEnvironment();
+                    runChildProcess();
+                } else {
+                    Logger::getInstance().log(
+                        name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
+                    {
+                        std::lock_guard<std::mutex> guard(childPidsMutex);
+                        tempChildPids.push_back(child_pid);
+                    }
+                }
+            }
+            usleep(totalSleepTime);
+            usleep(oneSecond);
+
+            bool allStarted = true;
+            for (auto it = tempChildPids.begin(); it != tempChildPids.end();) {
+                int status;
+                pid_t pid = *it;
+                if (waitpid(pid, &status, WNOHANG) > 0) {
+                    it = tempChildPids.erase(it);
+                    handleChildExit(pid, status);
+                    allStarted = false;
+                    break;
+                } else if (pid == -1) {
+                    Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
+                } else {
+                    if (std::find(childPids.begin(), childPids.end(), *it) == childPids.end()) {
+                        childPids.push_back(*it);
+                    }
+                    it = tempChildPids.erase(it);
+                    allStarted = false;
+                }
+            }
+            if (allStarted) {
+                Logger::getInstance().log("Process " + name + " started successfully");
+                stopAutoRestart.store(false);
+                break;
+            }
+
+            Logger::getInstance().logError("Attempt " + std::to_string(attempts + 1) + " failed to start " + name);
+        } catch (const std::exception &ex) {
+            Logger::getInstance().logError("Error starting program " + name + ": " + ex.what());
+            stop();
+        }
+        attempts++;
+    } while (attempts < restartAttempts);
+
+    stopAutoRestart.store(false);
 }
 
 // ___________________ STOP AND SYNCH ___________________
@@ -572,7 +650,7 @@ std::string Process::getName() const {
 
 // ___________________ MUTEX ___________________
 std::vector<pid_t>::iterator Process::safeEraseFromChildPids(std::vector<pid_t>::iterator it) {
-    // std::lock_guard<std::mutex> guard(childPidsMutex);
+    std::lock_guard<std::mutex> guard(childPidsMutex);
     it = childPids.erase(it);
     return it;
 }
