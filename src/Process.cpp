@@ -258,36 +258,29 @@ void Process::runChildProcess() const {
         ::umask(umaskInt);
     }
 
+    FILE *outFile = nullptr;
+    FILE *errFile = nullptr;
     // Redirect stdout and stderr
     if (stdoutLog.empty() || stdoutLog == "discard") {
-        auto outFile = freopen("/dev/null", "w", stdout);
-        if (outFile == nullptr) {
-        perror("Failed to redirect stdout");
-        _exit(EXIT_FAILURE);
-    }
+        outFile = freopen("/dev/null", "w", stdout);
     } else {
-        auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
-        if (outFile == nullptr) {
+        outFile = freopen(stdoutLog.c_str(), "a", stdout);
+    }
+    if (outFile == nullptr) {
         perror("Failed to redirect stdout");
         _exit(EXIT_FAILURE);
-    }
     }
 
 
     if (stderrLog.empty() || stderrLog == "discard") {
-        auto errFile = freopen("/dev/null", "w", stderr);
-        if (errFile == nullptr) {
-            fclose(stdout);
-            perror("Failed to redirect stderr");
-            _exit(EXIT_FAILURE);
-        }   
+        errFile = freopen("/dev/null", "w", stderr);
     } else {
-        auto errFile = freopen(stderrLog.c_str(), "a", stderr);
-        if (errFile == nullptr) {
-            fclose(stdout);
-            perror("Failed to redirect stderr");
-            _exit(EXIT_FAILURE);
-        }            
+        errFile = freopen(stderrLog.c_str(), "a", stderr);
+    }
+    if (errFile == nullptr) {
+        fclose(stdout);
+        perror("Failed to redirect stderr");
+        _exit(EXIT_FAILURE);
     }
 
     const std::vector<std::string> args = Utils::split(command, ' ');
@@ -394,7 +387,6 @@ void Process::restartProcess() {
                     Logger::getInstance().log(
                         name + " instance " + std::to_string(i) + " started with PID " + std::to_string(child_pid) + ".");
                     {
-                        std::lock_guard<std::mutex> guard(childPidsMutex);
                         tempChildPids.push_back(child_pid);
                     }
                 }
@@ -415,6 +407,7 @@ void Process::restartProcess() {
                     Logger::getInstance().logError("waitpid error: " + std::string(strerror(errno)));
                 } else {
                     if (std::find(childPids.begin(), childPids.end(), *it) == childPids.end()) {
+                        std::lock_guard<std::mutex> guard(childPidsMutex);
                         childPids.push_back(*it);
                     }
                     it = tempChildPids.erase(it);
