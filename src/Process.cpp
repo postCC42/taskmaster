@@ -271,6 +271,7 @@ void Process::runChildProcess() const {
         _exit(EXIT_FAILURE);
     }
 
+
     if (stderrLog.empty() || stderrLog == "discard") {
         errFile = freopen("/dev/null", "w", stderr);
     } else {
