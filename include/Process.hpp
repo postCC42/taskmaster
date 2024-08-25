@@ -105,6 +105,7 @@ class Process {
         void runChildProcess() const;
         void monitorChildProcesses();
         void handleChildExit(pid_t pid, int status);
+        void restartProcess();
 
         bool stopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
         static void forceStopProcess(pid_t pid, std::vector<pid_t>& pidsToErase);
