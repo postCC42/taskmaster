@@ -257,17 +257,27 @@ void Process::runChildProcess() const {
 
     // Redirect stdout and stderr
     if (stdoutLog.empty() || stdoutLog == "discard") {
-        freopen("/dev/null", "w", stdout);
+        auto outFile = freopen("/dev/null", "w", stdout);
+        if (outFile == nullptr) {
+        perror("Failed to redirect stdout");
+        _exit(EXIT_FAILURE);
+    }
     } else {
         auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
         if (outFile == nullptr) {
-            perror("Failed to redirect stdout");
-            _exit(EXIT_FAILURE);
-        }
+        perror("Failed to redirect stdout");
+        _exit(EXIT_FAILURE);
+    }
     }
 
+
     if (stderrLog.empty() || stderrLog == "discard") {
-            freopen("/dev/null", "w", stderr);
+        auto errFile = freopen("/dev/null", "w", stderr);
+        if (errFile == nullptr) {
+            fclose(stdout);
+            perror("Failed to redirect stderr");
+            _exit(EXIT_FAILURE);
+        }   
     } else {
         auto errFile = freopen(stderrLog.c_str(), "a", stderr);
         if (errFile == nullptr) {
