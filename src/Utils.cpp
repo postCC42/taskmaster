@@ -30,7 +30,9 @@ bool Utils::checkFilePermissions(const std::string& filePath) {
     }
 
     std::filesystem::path parentPath = path.parent_path();
-
+    if (parentPath.empty()) {
+        return true;
+    }
     if (!exists(parentPath)) {
         return false;
     }

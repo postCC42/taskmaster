@@ -258,26 +258,28 @@ void Process::runChildProcess() const {
         ::umask(umaskInt);
     }
 
+    FILE *outFile = nullptr;
+    FILE *errFile = nullptr;
     // Redirect stdout and stderr
     if (stdoutLog.empty() || stdoutLog == "discard") {
-        freopen("/dev/null", "w", stdout);
+        outFile = freopen("/dev/null", "w", stdout);
     } else {
-        auto outFile = freopen(stdoutLog.c_str(), "a", stdout);
-        if (outFile == nullptr) {
-            perror("Failed to redirect stdout");
-            _exit(EXIT_FAILURE);
-        }
+        outFile = freopen(stdoutLog.c_str(), "a", stdout);
+    }
+    if (outFile == nullptr) {
+        perror("Failed to redirect stdout");
+        _exit(EXIT_FAILURE);
     }
 
     if (stderrLog.empty() || stderrLog == "discard") {
-            freopen("/dev/null", "w", stderr);
+        errFile = freopen("/dev/null", "w", stderr);
     } else {
-        auto errFile = freopen(stderrLog.c_str(), "a", stderr);
-        if (errFile == nullptr) {
-            fclose(stdout);
-            perror("Failed to redirect stderr");
-            _exit(EXIT_FAILURE);
-        }            
+        errFile = freopen(stderrLog.c_str(), "a", stderr);
+    }
+    if (errFile == nullptr) {
+        fclose(stdout);
+        perror("Failed to redirect stderr");
+        _exit(EXIT_FAILURE);
     }
 
     const std::vector<std::string> args = Utils::split(command, ' ');
